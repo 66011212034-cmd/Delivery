@@ -1,6 +1,5 @@
 import 'package:delivery/pages/Rider_Profile.dart';
 import 'package:delivery/pages/User_Proflie.dart';
-import 'package:delivery/pages/page_Register.dart';
 import 'package:delivery/pages/select_Screen.dart';
 import 'package:flutter/material.dart';
 
