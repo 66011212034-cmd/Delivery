@@ -40,7 +40,6 @@ class SelectScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // ปุ่มผู้ใช้ทั่วไป
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF58A0C8),
@@ -75,7 +74,6 @@ class SelectScreen extends StatelessWidget {
 
               const SizedBox(height: 10),
 
-              // ปุ่มไรเดอร์
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF58A0C8),
@@ -88,8 +86,7 @@ class SelectScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const RegisterScreen(role: "rider"),
+                      builder: (context) => const RegisterScreen(role: "rider"),
                     ),
                   );
                 },
@@ -122,12 +119,12 @@ class SelectScreen extends StatelessWidget {
                   ),
                   GestureDetector(
                     onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LoginScreen(),
-                          ),
-                        );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
+                      );
                     },
                     child: const Text(
                       "เข้าสู่ระบบ",

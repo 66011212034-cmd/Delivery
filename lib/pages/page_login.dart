@@ -1,3 +1,5 @@
+import 'package:delivery/pages/Rider_Profile.dart';
+import 'package:delivery/pages/User_Proflie.dart';
 import 'package:delivery/pages/page_Register.dart';
 import 'package:delivery/pages/select_Screen.dart';
 import 'package:flutter/material.dart';
@@ -13,19 +15,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  String? selectedRole; // เก็บ role ที่เลือก
-  final List<String> roles = ["ผู้ใช้ทั่วไป", "ไรเดอร์",];
+  String? selectedRole;
+  final List<String> roles = ["ผู้ใช้ทั่วไป", "ไรเดอร์"];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0C3B66), // พื้นหลังน้ำเงินเข้ม
+      backgroundColor: const Color(0xFF0C3B66),
       body: Center(
         child: Container(
           padding: const EdgeInsets.all(30),
           margin: const EdgeInsets.symmetric(horizontal: 25),
           decoration: BoxDecoration(
-            color: const Color(0xFF4A90E2), // สีน้ำเงินอ่อนตรงกลาง
+            color: const Color(0xFF4A90E2),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
@@ -41,7 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 25),
 
-              // ช่องกรอกเบอร์โทรศัพท์
               TextField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
@@ -53,20 +54,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(5),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
                 ),
               ),
               const SizedBox(height: 15),
 
-              // Dropdown เลือก Role
               DropdownButtonFormField<String>(
                 value: selectedRole,
                 items: roles.map((role) {
-                  return DropdownMenuItem(
-                    value: role,
-                    child: Text(role),
-                  );
+                  return DropdownMenuItem(value: role, child: Text(role));
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
@@ -81,13 +80,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(5),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
                 ),
               ),
               const SizedBox(height: 15),
 
-              // ช่องกรอกรหัสผ่าน
               TextField(
                 controller: passwordController,
                 obscureText: true,
@@ -100,27 +100,50 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(5),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
 
-              // ปุ่มเข้าสู่ระบบ
               SizedBox(
                 width: double.infinity,
                 height: 45,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0C3B66), // น้ำเงินเข้ม
+                    backgroundColor: const Color(0xFF0C3B66),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),
                   onPressed: () {
-                    // TODO: เขียนฟังก์ชัน login พร้อม role
-                    debugPrint(
-                        "Phone: ${phoneController.text}, Password: ${passwordController.text}, Role: $selectedRole");
+                    if (selectedRole == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("กรุณาเลือกบทบาทก่อนเข้าสู่ระบบ"),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // ✅ ตรวจสอบ role แล้วไปยังหน้าโปรไฟล์ที่เกี่ยวข้อง
+                    if (selectedRole == "ผู้ใช้ทั่วไป") {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UserProflie(),
+                        ),
+                      );
+                    } else if (selectedRole == "ไรเดอร์") {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RiderProfile(),
+                        ),
+                      );
+                    }
                   },
                   child: const Text(
                     "เข้าสู่ระบบ",
@@ -131,7 +154,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // ลิงก์สมัครสมาชิก
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

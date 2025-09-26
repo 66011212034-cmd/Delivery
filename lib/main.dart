@@ -1,5 +1,4 @@
-// import 'package:delivery/pages/page_Register.dart';
-// import 'package:delivery/pages/page_login.dart';
+import 'package:delivery/pages/User_Proflie.dart';
 import 'package:delivery/pages/select_Screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';

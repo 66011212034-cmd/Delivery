@@ -1,8 +1,10 @@
+import 'package:delivery/pages/Rider_Profile.dart';
+import 'package:delivery/pages/User_Proflie.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
 
 class RegisterScreen extends StatefulWidget {
-  final String role; // 
+  final String role;
   const RegisterScreen({super.key, required this.role});
 
   @override
@@ -32,7 +34,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // หัวข้อสมัครสมาชิก (เปลี่ยนตาม role)
                 Text(
                   widget.role == "user"
                       ? "สมัครสมาชิก (ผู้ใช้ทั่วไป)"
@@ -45,7 +46,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 25),
 
-                // 🔹 ฟอร์มกรอกข้อมูลพื้นฐาน
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -91,7 +91,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // ปุ่มอัปโหลดรูป
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -113,7 +112,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 25),
 
-                // 🔹 ถ้า role เป็น "user" → แสดงที่อยู่
                 if (widget.role == "user") ...[
                   const Align(
                     alignment: Alignment.centerLeft,
@@ -155,7 +153,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 20),
                 ],
 
-                // 🔹 ถ้า role เป็น "rider" → เพิ่มข้อมูลพิเศษ
                 if (widget.role == "rider") ...[
                   const Align(
                     alignment: Alignment.centerLeft,
@@ -195,7 +192,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 12),
                 ],
 
-                // ปุ่มสมัครสมาชิก
                 SizedBox(
                   width: double.infinity,
                   height: 45,
@@ -207,7 +203,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     onPressed: () {
-                      // TODO: สมัครสมาชิก (ส่งข้อมูล + role)
+                      // TODO: ตรงนี้จะต้องบันทึกข้อมูลไป database ก่อน (API)
+                      // จากนั้นพาไปหน้าเหมาะสมตาม role
+
+                      if (widget.role == "user") {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const UserProflie(),
+                          ),
+                        );
+                      } else if (widget.role == "rider") {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RiderProfile(),
+                          ),
+                        );
+                      }
                     },
                     child: const Text(
                       "สมัครสมาชิก",
@@ -215,9 +228,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 20),
 
-                // ลิงก์ไป login
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -227,13 +240,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     GestureDetector(
                       onTap: () {
-                         Navigator.push(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const LoginScreen(),
                           ),
                         );
-                        
                       },
                       child: const Text(
                         "เข้าสู่ระบบ",
