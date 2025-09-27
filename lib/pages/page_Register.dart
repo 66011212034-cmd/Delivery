@@ -300,7 +300,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           "lastName": lastNameController.text,
           "password": passwordController.text,
           "address": addressController.text,
-          "role": role,
         });
       } else if (role == "rider") {
         await db.collection("Rider").doc().set({
@@ -309,7 +308,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           "lastName": lastNameController.text,
           "password": passwordController.text,
           "license": licenseController.text,
-          "role": role,
         });
       }
       print("Register successful!");

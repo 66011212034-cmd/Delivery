@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:delivery/pages/Rider_Profile.dart';
 import 'package:delivery/pages/User_Proflie.dart';
 import 'package:delivery/pages/select_Screen.dart';
@@ -117,33 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),
-                  onPressed: () {
-                    if (selectedRole == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("กรุณาเลือกบทบาทก่อนเข้าสู่ระบบ"),
-                        ),
-                      );
-                      return;
-                    }
-
-                    // ✅ ตรวจสอบ role แล้วไปยังหน้าโปรไฟล์ที่เกี่ยวข้อง
-                    if (selectedRole == "ผู้ใช้ทั่วไป") {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const UserProflie(),
-                        ),
-                      );
-                    } else if (selectedRole == "ไรเดอร์") {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RiderProfile(),
-                        ),
-                      );
-                    }
+                  onPressed: () async {
+                    await loginUser(); // เรียก method แยก
                   },
+
                   child: const Text(
                     "เข้าสู่ระบบ",
                     style: TextStyle(fontSize: 16, color: Colors.white),
@@ -185,5 +163,67 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> loginUser() async {
+    if (selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณาเลือกบทบาทก่อนเข้าสู่ระบบ")),
+      );
+      return;
+    }
+
+    String phone = phoneController.text.trim();
+    String password = passwordController.text.trim();
+
+    if (phone.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณากรอกเบอร์โทรและรหัสผ่าน")),
+      );
+      return;
+    }
+
+    // เลือก collection ตาม role
+    String collection = selectedRole == "ผู้ใช้ทั่วไป" ? "User" : "Rider";
+
+    try {
+      var snapshot = await FirebaseFirestore.instance
+          .collection(collection)
+          .where("phone", isEqualTo: phone)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("ไม่พบผู้ใช้")));
+        return;
+      }
+
+      var userData = snapshot.docs.first.data();
+
+      if (userData["password"] == password) {
+        // รหัสถูกต้อง → ไปหน้าโปรไฟล์ตาม role
+        if (selectedRole == "ผู้ใช้ทั่วไป") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const UserProflie()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const RiderProfile()),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("รหัสผ่านไม่ถูกต้อง")));
+      }
+    } catch (e) {
+      print("Login error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("เกิดข้อผิดพลาด กรุณาลองใหม่")),
+      );
+    }
   }
 }
