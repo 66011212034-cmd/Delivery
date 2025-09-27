@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:delivery/pages/Rider_Profile.dart';
 import 'package:delivery/pages/User_Proflie.dart';
 import 'package:delivery/pages/page_login.dart';
@@ -17,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
+  final TextEditingController licenseController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +190,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  TextField(decoration: _inputDecoration("ทะเบียนรถ")),
+                  TextField(
+                    controller: licenseController,
+                    decoration: _inputDecoration("ทะเบียนรถ"),
+                  ),
                   const SizedBox(height: 12),
                 ],
 
@@ -202,25 +207,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(5),
                       ),
                     ),
-                    onPressed: () {
-                      // TODO: ตรงนี้จะต้องบันทึกข้อมูลไป database ก่อน (API)
-                      // จากนั้นพาไปหน้าเหมาะสมตาม role
+                    onPressed: () async {
+                      await Register(widget.role);
 
-                      if (widget.role == "user") {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UserProflie(),
-                          ),
-                        );
-                      } else if (widget.role == "rider") {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RiderProfile(),
-                          ),
-                        );
-                      }
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
+                      );
+                      // if (widget.role == "user") {
+                      //   Navigator.pushReplacement(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //       builder: (context) => const UserProflie(),
+                      //     ),
+                      //   );
+                      // } else if (widget.role == "rider") {
+                      //   Navigator.pushReplacement(
+                      //     context,
+                      //     MaterialPageRoute(
+                      //       builder: (context) => const RiderProfile(),
+                      //     ),
+                      //   );
+                      // }
                     },
                     child: const Text(
                       "สมัครสมาชิก",
@@ -277,5 +287,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
     );
+  }
+
+  Future<void> Register(String role) async {
+    var db = FirebaseFirestore.instance;
+
+    try {
+      if (role == "user") {
+        await db.collection("User").doc().set({
+          "phone": phoneController.text,
+          "firstName": firstNameController.text,
+          "lastName": lastNameController.text,
+          "password": passwordController.text,
+          "address": addressController.text,
+          "role": role,
+        });
+      } else if (role == "rider") {
+        await db.collection("Rider").doc().set({
+          "phone": phoneController.text,
+          "firstName": firstNameController.text,
+          "lastName": lastNameController.text,
+          "password": passwordController.text,
+          "license": licenseController.text,
+          "role": role,
+        });
+      }
+      print("Register successful!");
+    } catch (e) {
+      print("Failed to register: $e");
+    }
   }
 }
