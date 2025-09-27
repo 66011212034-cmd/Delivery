@@ -57,10 +57,14 @@ class _RiderProfileState extends State<RiderProfile> {
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 35,
-                    backgroundImage: AssetImage("assets/images/rider.png"),
+                    backgroundImage: riderData!['profileUrl'] != ""
+                        ? NetworkImage(riderData!['profileUrl'])
+                        : const AssetImage("assets/images/rider.png")
+                              as ImageProvider,
                   ),
+
                   const SizedBox(width: 15),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

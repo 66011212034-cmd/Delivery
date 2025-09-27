@@ -58,10 +58,14 @@ class _UserProflieState extends State<UserProflie> {
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 35,
-                      backgroundImage: AssetImage("assets/images/profile.png"),
+                      backgroundImage: userData!['profileUrl'] != ""
+                          ? NetworkImage(userData!['profileUrl'])
+                          : const AssetImage("assets/images/profile.png")
+                                as ImageProvider,
                     ),
+
                     const SizedBox(width: 15),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
