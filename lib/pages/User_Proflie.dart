@@ -1,11 +1,47 @@
-import 'package:delivery/pages/select_Screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
 
-class UserProflie extends StatelessWidget {
-  const UserProflie({super.key});
+class UserProflie extends StatefulWidget {
+  final String phone;
+  const UserProflie({super.key, required this.phone});
+
+  @override
+  State<UserProflie> createState() => _UserProflieState();
+}
+
+class _UserProflieState extends State<UserProflie> {
+  Map<String, dynamic>? userData;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    try {
+      var snapshot = await FirebaseFirestore.instance
+          .collection("User")
+          .where("phone", isEqualTo: widget.phone)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        setState(() {
+          userData = snapshot.docs.first.data();
+        });
+      }
+    } catch (e) {
+      print("Error fetching user data: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (userData == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
       body: SafeArea(
@@ -24,32 +60,32 @@ class UserProflie extends StatelessWidget {
                   children: [
                     const CircleAvatar(
                       radius: 35,
-                      backgroundImage: AssetImage(
-                        "assets/images/profile.png",
-                      ), // รูปโปรไฟล์
+                      backgroundImage: AssetImage("assets/images/profile.png"),
                     ),
                     const SizedBox(width: 15),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          "User Name",
-                          style: TextStyle(
+                          "${userData!['firstName']} ${userData!['lastName']}",
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
-                          "imranimwz02007",
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          userData!['phone'],
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 25),
-
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
@@ -80,7 +116,6 @@ class UserProflie extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 10),
-
                       Row(
                         children: [
                           Expanded(
@@ -103,7 +138,6 @@ class UserProflie extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 10),
-
                       Row(
                         children: [
                           Expanded(
@@ -147,7 +181,6 @@ class UserProflie extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 25),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -162,10 +195,10 @@ class UserProflie extends StatelessWidget {
                     icon: const Icon(Icons.logout),
                     label: const Text("ออกจากระบบ"),
                     onPressed: () {
-                      Navigator.push(
+                      Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SelectScreen(),
+                          builder: (context) => const LoginScreen(),
                         ),
                       );
                     },

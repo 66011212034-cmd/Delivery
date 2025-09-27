@@ -206,18 +206,14 @@ class _LoginScreenState extends State<LoginScreen> {
         if (selectedRole == "ผู้ใช้ทั่วไป") {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const UserProflie()),
+            MaterialPageRoute(builder: (context) => UserProflie(phone: phone)),
           );
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const RiderProfile()),
+            MaterialPageRoute(builder: (context) => RiderProfile(phone: phone)),
           );
         }
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("รหัสผ่านไม่ถูกต้อง")));
       }
     } catch (e) {
       print("Login error: $e");

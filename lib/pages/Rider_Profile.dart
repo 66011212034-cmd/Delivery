@@ -1,11 +1,47 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:delivery/pages/page_login.dart';
+import 'package:flutter/material.dart';
 
-class RiderProfile extends StatelessWidget {
-  const RiderProfile({super.key});
+class RiderProfile extends StatefulWidget {
+  final String phone;
+  const RiderProfile({super.key, required this.phone});
+
+  @override
+  State<RiderProfile> createState() => _RiderProfileState();
+}
+
+class _RiderProfileState extends State<RiderProfile> {
+  Map<String, dynamic>? riderData;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRiderData();
+  }
+
+  Future<void> fetchRiderData() async {
+    try {
+      var snapshot = await FirebaseFirestore.instance
+          .collection("Rider")
+          .where("phone", isEqualTo: widget.phone)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        setState(() {
+          riderData = snapshot.docs.first.data();
+        });
+      }
+    } catch (e) {
+      print("Error fetching rider data: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (riderData == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
       body: Center(
@@ -28,18 +64,18 @@ class RiderProfile extends StatelessWidget {
                   const SizedBox(width: 15),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        "Rider Name",
-                        style: TextStyle(
+                        "${riderData!['firstName']} ${riderData!['lastName']}",
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                       Text(
-                        "rider@example.com",
-                        style: TextStyle(color: Colors.white70),
+                        riderData!['phone'],
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
