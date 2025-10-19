@@ -63,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 15),
 
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 items: roles.map((role) {
                   return DropdownMenuItem(value: role, child: Text(role));
                 }).toList(),
@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SelectScreen(),
+                          builder: (context) => const SelectScreen(phone: '',),
                         ),
                       );
                     },

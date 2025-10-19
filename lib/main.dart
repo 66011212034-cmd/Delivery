@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:delivery/firebase_options.dart';
+import 'package:delivery/pages/%E0%B9%8AUser_function/create_parcel.dart';
 import 'package:delivery/pages/select_Screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +26,9 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       theme: ThemeData(textTheme: GoogleFonts.notoSansThaiLoopedTextTheme()),
       title: 'Flutter Demo',
-      home: const SelectScreen(),
+      home: const SelectScreen(phone: '',),
+      // home: const CreateParcelScreen(),  
+    
     );
   }
 }
