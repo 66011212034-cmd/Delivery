@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 // import 'register_screen.dart'; // import หน้า register
 
 class SelectScreen extends StatelessWidget {
-  const SelectScreen({super.key});
+  const SelectScreen({super.key, required String phone});
 
   @override
   Widget build(BuildContext context) {

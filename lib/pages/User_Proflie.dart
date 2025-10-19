@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:delivery/pages/%E0%B9%8AUser_function/create_parcel.dart';
+import 'package:delivery/pages/%E0%B9%8AUser_function/follow_all_order.dart';
+import 'package:delivery/pages/%E0%B9%8AUser_function/follow_one_order.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
 
@@ -132,7 +135,15 @@ class _UserProflieState extends State<UserProflie> {
                               ),
                               icon: const Icon(Icons.inventory),
                               label: const Text("สร้างรายการสั่งของ"),
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const CreateParcelScreen(),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -154,7 +165,15 @@ class _UserProflieState extends State<UserProflie> {
                               ),
                               icon: const Icon(Icons.shopping_cart),
                               label: const Text("ติดตามสถานะสินค้าที่สั่ง"),
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const FollowAllOrderPage(),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -172,7 +191,15 @@ class _UserProflieState extends State<UserProflie> {
                               ),
                               icon: const Icon(Icons.delivery_dining),
                               label: const Text("ติดตามสถานะสินค้าที่รับ"),
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const FollowOneOrderPage(),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],

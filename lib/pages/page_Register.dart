@@ -1,6 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:delivery/pages/Rider_Profile.dart';
-import 'package:delivery/pages/User_Proflie.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
 

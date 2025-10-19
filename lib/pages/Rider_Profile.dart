@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:delivery/pages/Rider_function/Rider_order.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
 
@@ -87,7 +88,12 @@ class _RiderProfileState extends State<RiderProfile> {
                 icon: Icons.assignment,
                 text: "งานที่ได้รับ",
                 onTap: () {
-                  // TODO: ไปหน้าแสดงงานที่ได้รับ
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RiderOrder(),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 10),
