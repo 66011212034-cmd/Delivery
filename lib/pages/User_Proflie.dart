@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:delivery/pages/%E0%B9%8AUser_function/add_map.dart';
 import 'package:delivery/pages/%E0%B9%8AUser_function/create_parcel.dart';
-import 'package:delivery/pages/%E0%B9%8AUser_function/follow_all_order.dart';
+import 'package:delivery/pages/%E0%B9%8AUser_function/follow_ReceivedPage.dart';
+import 'package:delivery/pages/%E0%B9%8AUser_function/follow_send_order.dart';
 import 'package:delivery/pages/%E0%B9%8AUser_function/follow_one_order.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
@@ -113,7 +115,14 @@ class _UserProflieState extends State<UserProflie> {
                               ),
                               icon: const Icon(Icons.location_on),
                               label: const Text("เพิ่มที่อยู่จัดส่ง"),
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AddMap(),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -164,7 +173,7 @@ class _UserProflieState extends State<UserProflie> {
                                 ),
                               ),
                               icon: const Icon(Icons.shopping_cart),
-                              label: const Text("ติดตามสถานะสินค้าที่สั่ง"),
+                              label: const Text("ติดตามสถานะสินค้าที่ส่ง"),
                               onPressed: () {
                                 Navigator.push(
                                   context,
@@ -196,7 +205,7 @@ class _UserProflieState extends State<UserProflie> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                        const FollowOneOrderPage(),
+                                        const FollowAllReceivedPage(),
                                   ),
                                 );
                               },

@@ -1,10 +1,40 @@
+import 'package:delivery/pages/๊User_function/follow_one_order.dart';
 import 'package:flutter/material.dart';
 
+//ติดตามสถานะสินค้าที่ส่ง
 class FollowAllOrderPage extends StatelessWidget {
   const FollowAllOrderPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    //ข้อมูลออเดอร์ทั้งหมด
+    final List<Map<String, dynamic>> orders = [
+      {
+        'id': '098765431',
+        'status': 'รอไรเดอร์รับสินค้า',
+        'price': '200',
+        'product': 'ข้าวกล่อง',
+        'address': 'ม.เทคโนโลยีราชมงคลธัญบุรี',
+        'image': 'assets/images/rider1.png',
+      },
+      {
+        'id': '123456789',
+        'status': 'ไรเดอร์รับสินค้าแล้ว',
+        'price': '80,000',
+        'product': 'iPhone 17 Pro Max',
+        'address': 'คณะวิทยาการสารสนเทศ ม.ใหม่ มหาวิทยาลัยมหาสารคาม',
+        'image': 'assets/images/rider2.png',
+      },
+      {
+        'id': '555555555',
+        'status': 'ไรเดอร์อยู่ระหว่างนำส่งสินค้า',
+        'price': '127',
+        'product': 'กาแฟ 3 กล่อง',
+        'address': 'หอพักพีรดา อ.เมือง จ.ขอนแก่น',
+        'image': 'assets/images/rider3.png',
+      },
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
       appBar: AppBar(
@@ -30,11 +60,13 @@ class FollowAllOrderPage extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
                 color: Colors.grey[300],
-                // // image: const DecorationImage(
-                // //   image: AssetImage("แผนที่"),
-                //   fit: BoxFit.cover,
+              ),
+              child: const Center(
+                child: Icon(Icons.map, color: Colors.grey, size: 80),
               ),
             ),
+
+            //จำนวนออเดอร์ทั้งหมด
             Container(
               width: double.infinity,
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -45,15 +77,15 @@ class FollowAllOrderPage extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     "ขณะนี้มีรายการส่งของทั้งหมด",
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
-                  SizedBox(height: 5),
+                  const SizedBox(height: 5),
                   Text(
-                    "3 รายการ",
-                    style: TextStyle(
+                    "${orders.length} รายการ",
+                    style: const TextStyle(
                       color: Colors.yellow,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -65,9 +97,13 @@ class FollowAllOrderPage extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            OrderCard(status: "รอไรเดอร์รับสินค้า", price: "200"),
-            OrderCard(status: "ไรเดอร์รับสินค้าแล้ว", price: "80,000"),
-            OrderCard(status: "ไรเดอร์อยู่ระหว่างนำส่งสินค้า", price: "127"),
+            //รายการออเดอร์ทั้งหมด
+            for (var order in orders)
+              OrderCard(
+                status: order['status'],
+                price: order['price'],
+                orderData: order,
+              ),
 
             const SizedBox(height: 20),
           ],
@@ -80,8 +116,14 @@ class FollowAllOrderPage extends StatelessWidget {
 class OrderCard extends StatelessWidget {
   final String status;
   final String price;
+  final Map<String, dynamic> orderData;
 
-  const OrderCard({super.key, required this.status, required this.price});
+  const OrderCard({
+    super.key,
+    required this.status,
+    required this.price,
+    required this.orderData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -95,9 +137,9 @@ class OrderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             "สถานะออเดอร์",
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            style: TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 5),
           Text(
@@ -132,7 +174,15 @@ class OrderCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        FollowOneOrderPage(orderData: orderData),
+                  ),
+                );
+              },
               child: const Text("คลิกเพื่อติดตาม"),
             ),
           ),
