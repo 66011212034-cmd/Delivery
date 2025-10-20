@@ -11,7 +11,7 @@ class GPSandMapPage extends StatefulWidget {
 
 class _GPSandMapPageState extends State<GPSandMapPage> {
   String locationMessage = "ตำแหน่งยังไม่ถูกระบุ";
-
+// ได้ยังงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงง
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
