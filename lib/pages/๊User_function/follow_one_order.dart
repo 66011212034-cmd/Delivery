@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+//หน้านี one order
 
 class FollowOneOrderPage extends StatelessWidget {
-  const FollowOneOrderPage({super.key});
+  final Map<String, dynamic> orderData;
+  const FollowOneOrderPage({super.key, required this.orderData});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +31,7 @@ class FollowOneOrderPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ข้อมูลสินค้าที่สั่ง
+              //ข้อมูลสินค้าที่สั่ง
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -47,9 +50,12 @@ class FollowOneOrderPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      "Iphone 17 promax",
-                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    Text(
+                      orderData['product'] ?? "ไม่ระบุสินค้า",
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -61,9 +67,9 @@ class FollowOneOrderPage extends StatelessWidget {
                         color: const Color(0xFF0C3B66),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        "80,000.-",
-                        style: TextStyle(
+                      child: Text(
+                        "${orderData['price'] ?? '0'}.–",
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -75,34 +81,37 @@ class FollowOneOrderPage extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-                Align(
+              //สถานะ
+              Align(
                 alignment: Alignment.centerRight,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
                   decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
-                  borderRadius: BorderRadius.circular(20),
+                    color: const Color(0xFFFFF9C4),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.white, size: 18),
-                    SizedBox(width: 6),
-                    Text(
-                    "ไรเดอร์รับสินค้าแล้ว",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    ),
-                  ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 6),
+                      Text(
+                        orderData['status'] ?? "รออัปเดตสถานะ",
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                ),
+              ),
 
               const SizedBox(height: 20),
 
-              //ข้อมูลที่อยู่จัดส่ง
+              //ที่อยู
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -127,18 +136,18 @@ class FollowOneOrderPage extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      "คณะวิทยาการสารสนเทศ ม.ใหม่ มหาวิทยาลัยมหาสารคาม",
-                      style: TextStyle(color: Colors.white),
+                    Text(
+                      orderData['address'] ?? "ไม่พบข้อมูลที่อยู่",
+                      style: const TextStyle(color: Colors.white),
                     ),
                     const SizedBox(height: 4),
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.phone, color: Colors.white, size: 18),
-                        SizedBox(width: 6),
+                        const Icon(Icons.phone, color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
                         Text(
-                          "085-795-7878",
-                          style: TextStyle(color: Colors.white),
+                          orderData['id'] ?? "ไม่พบข้อมูลเบอร์โทร",
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ],
                     ),
@@ -146,8 +155,9 @@ class FollowOneOrderPage extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.asset(
-                        "รูปไรเดอร์",
+                        orderData['image'] ?? "",
                         fit: BoxFit.cover,
+                        height: 150,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
                             color: Colors.white12,

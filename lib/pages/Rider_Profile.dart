@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:delivery/pages/Rider_function/Rider_history.dart';
 import 'package:delivery/pages/Rider_function/Rider_order.dart';
+import 'package:delivery/pages/Rider_function/Rider_work.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
 
@@ -94,9 +96,7 @@ class _RiderProfileState extends State<RiderProfile> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const RiderOrder(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const RiderOrder()),
                   );
                 },
               ),
@@ -106,7 +106,10 @@ class _RiderProfileState extends State<RiderProfile> {
                 icon: Icons.delivery_dining,
                 text: "งานที่กำลังดำเนินการ",
                 onTap: () {
-                  // TODO: ไปหน้าแสดงงานที่กำลังทำ
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RiderWork()),
+                  );
                 },
               ),
               const SizedBox(height: 10),
@@ -115,7 +118,11 @@ class _RiderProfileState extends State<RiderProfile> {
                 icon: Icons.history,
                 text: "ประวัติการส่ง",
                 onTap: () {
-                  // TODO: ไปหน้า history
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RiderHistoryPage()),
+                    
+                  );
                 },
               ),
 

@@ -1,5 +1,6 @@
+import 'package:delivery/pages/%E0%B9%8AUser_function/search_customer_page.dart';
 import 'package:flutter/material.dart';
-
+//สร้างรายการ
 class CreateParcelScreen extends StatefulWidget {
   const CreateParcelScreen({super.key});
 
@@ -117,7 +118,14 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SearchCustomerPage(),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.search, color: Colors.white),
                     label: const Text(
                       "ค้นหาข้อมูลผู้รับสินค้า",
