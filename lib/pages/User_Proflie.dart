@@ -119,7 +119,7 @@ class _UserProflieState extends State<UserProflie> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const AddMap(),
+                                    builder: (context) => const GPSandMapPage(),
                                   ),
                                 );
                               },
