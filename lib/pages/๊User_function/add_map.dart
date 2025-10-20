@@ -1,21 +1,59 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-//หน้าเพิ่มแผนที่
+import 'package:geolocator/geolocator.dart';
+
 class AddMap extends StatefulWidget {
   const AddMap({super.key});
 
   @override
-  State<AddMap> createState() => _WorkingOrderPageState();
+  State<AddMap> createState() => _AddMapState();
 }
 
-class _WorkingOrderPageState extends State<AddMap> {
-  // พิกัด(ดึงจากFirebase)
-  final LatLng deliveryLocation = const LatLng(13.7563, 100.5018);
-
+class _AddMapState extends State<AddMap> {
   GoogleMapController? mapController;
+  LatLng? _currentPosition;
 
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissions are permanently denied');
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentLocation();
+  }
+
+  Future<void> _loadCurrentLocation() async {
+    try {
+      Position position = await _determinePosition();
+      setState(() {
+        _currentPosition = LatLng(position.latitude, position.longitude);
+      });
+      log('ตำแหน่งปัจจุบัน: ${position.latitude}, ${position.longitude}');
+    } catch (e) {
+      log('Error getting location: $e');
+    }
   }
 
   @override
@@ -34,17 +72,41 @@ class _WorkingOrderPageState extends State<AddMap> {
       body: Column(
         children: [
           Expanded(
-            //แผนที่
             child: Container(
               margin: const EdgeInsets.all(16),
-              height: 250,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
                 color: Colors.grey[300],
               ),
-              child: const Center(
-                child: Icon(Icons.map, color: Colors.grey, size: 80),
-              ),
+              child: _currentPosition == null
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF0C3B66),
+                      ),
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: GoogleMap(
+                        mapType: MapType.normal,
+                        initialCameraPosition: CameraPosition(
+                          target: _currentPosition!,
+                          zoom: 16,
+                        ),
+                        myLocationEnabled: true,
+                        onMapCreated: (controller) {
+                          mapController = controller;
+                        },
+                        markers: {
+                          Marker(
+                            markerId: const MarkerId('currentLocation'),
+                            position: _currentPosition!,
+                            infoWindow: const InfoWindow(
+                              title: 'ตำแหน่งของคุณ',
+                            ),
+                          ),
+                        },
+                      ),
+                    ),
             ),
           ),
           Padding(
