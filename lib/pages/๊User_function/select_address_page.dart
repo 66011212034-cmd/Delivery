@@ -1,20 +1,68 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-//เลือกที่อยู่ผู้รับ
 class SelectAddressPage extends StatefulWidget {
-  final List<dynamic> addresses;
+  final String userId; // userId ที่ส่งมาจาก SearchCustomerPage
 
-  const SelectAddressPage({super.key, required this.addresses});
+  const SelectAddressPage({super.key, required this.userId});
 
   @override
   State<SelectAddressPage> createState() => _SelectAddressPageState();
 }
 
 class _SelectAddressPageState extends State<SelectAddressPage> {
+  List<Map<String, dynamic>> addresses = [];
   Map<String, dynamic>? selectedAddress;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAddresses();
+  }
+
+  Future<void> fetchAddresses() async {
+    try {
+      // ดึงข้อมูล address จาก collection 'Address' ตาม userId
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Address')
+          .where('userId', isEqualTo: widget.userId)
+          .get();
+
+      final fetchedAddresses = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'name': data['address_text'] ?? '', // เปลี่ยนจาก addressName
+          'lat': data['latitude'].toString(),
+          'lng': data['longitude'].toString(),
+        };
+      }).toList();
+
+      setState(() {
+        addresses = fetchedAddresses;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching addresses: $e");
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('เกิดข้อผิดพลาดในการดึงที่อยู่')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0C3B66),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
       appBar: AppBar(
@@ -31,7 +79,7 @@ class _SelectAddressPageState extends State<SelectAddressPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              "ข้อมูลที่อยู่ (${widget.addresses.length} รายการ)",
+              "ข้อมูลที่อยู่ (${addresses.length} รายการ)",
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -40,9 +88,9 @@ class _SelectAddressPageState extends State<SelectAddressPage> {
             const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
-                itemCount: widget.addresses.length,
+                itemCount: addresses.length,
                 itemBuilder: (context, index) {
-                  final address = widget.addresses[index];
+                  final address = addresses[index];
                   final isSelected = selectedAddress == address;
 
                   return GestureDetector(

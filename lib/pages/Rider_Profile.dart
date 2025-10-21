@@ -4,10 +4,9 @@ import 'package:delivery/pages/Rider_function/Rider_order.dart';
 import 'package:delivery/pages/Rider_function/Rider_work.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
-
 class RiderProfile extends StatefulWidget {
-  final String phone;
-  const RiderProfile({super.key, required this.phone});
+  final String userId;
+  const RiderProfile({super.key, required this.userId});
 
   @override
   State<RiderProfile> createState() => _RiderProfileState();
@@ -24,14 +23,14 @@ class _RiderProfileState extends State<RiderProfile> {
 
   Future<void> fetchRiderData() async {
     try {
-      var snapshot = await FirebaseFirestore.instance
+      var doc = await FirebaseFirestore.instance
           .collection("Rider")
-          .where("phone", isEqualTo: widget.phone)
+          .doc(widget.userId)
           .get();
 
-      if (snapshot.docs.isNotEmpty) {
+      if (doc.exists) {
         setState(() {
-          riderData = snapshot.docs.first.data();
+          riderData = doc.data();
         });
       }
     } catch (e) {

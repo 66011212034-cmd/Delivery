@@ -18,7 +18,13 @@ class _GPSandMapPageState extends State<GPSandMapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('GPS and Map')),
+      appBar: AppBar(
+        title: const Text('GPS and Map'),
+        backgroundColor: const Color(0xFF0C3B66),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+      ),
+
       body: Column(
         children: [
           // FilledButton(
@@ -72,20 +78,34 @@ class _GPSandMapPageState extends State<GPSandMapPage> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            child: Text(
+              selectedPoint != null
+                  ? "ละติจูด: ${selectedPoint!.latitude.toStringAsFixed(6)} | ลองจิจูด: ${selectedPoint!.longitude.toStringAsFixed(6)}"
+                  : "ยังไม่ได้เลือกตำแหน่งบนแผนที่",
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+          ),
+
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0C3B66),
+              padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 14),
+            ),
             onPressed: () {
               if (selectedPoint != null) {
-                Navigator.pop(
-                  context,
-                  selectedPoint,
-                ); 
+                Navigator.pop(context, selectedPoint);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('กรุณาเลือกตำแหน่งบนแผนที่')),
                 );
               }
             },
-            child: const Text("ยืนยันตำแหน่ง"),
+            child: const Text(
+              "ยืนยันตำแหน่ง",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

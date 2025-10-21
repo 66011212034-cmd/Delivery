@@ -1,7 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:delivery/pages/%E0%B9%8AUser_function/select_address_page.dart';
 import 'package:flutter/material.dart';
 
-//ค้นหา
 class SearchCustomerPage extends StatefulWidget {
   const SearchCustomerPage({super.key});
 
@@ -13,60 +13,54 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
   final TextEditingController phoneController = TextEditingController();
   List<Map<String, dynamic>> searchResults = [];
 
-  void _search() {
-    //ข้อมูลผู้รับสินค้า
-    final List<Map<String, dynamic>> dummyData = [
-      {
-        'name': 'Tumtam Tamtam',
-        'phone': '01-111-1111',
-        'addresses': [
-          {
-            'name': 'คณะวิศวกรรมศาสตร์ ม.ใหม่',
-            'detail': 'ถ.มหาวิทยาลัย แขวงสวนใหญ่',
-            'lat': '10.5965',
-            'lng': '2.184',
-          },
-          {
-            'name': 'หมู่บ้าน รอยัลวิลล่า',
-            'detail': 'ซอย 16 แขวงบางรัก',
-            'lat': '10.474599',
-            'lng': '45.2569',
-          },
-          {
-            'name': 'สวนผกา',
-            'detail': 'เขตหลักสอง กรุงเทพฯ',
-            'lat': '5.264585',
-            'lng': '0.2659',
-          },
-        ],
-      },
-      {
-        'name': 'Mali Kittiya',
-        'phone': '02-222-2222',
-        'addresses': [
-          {
-            'name': 'อาคาร A ชั้น 2',
-            'detail': 'ถนนลาดพร้าว กรุงเทพฯ',
-            'lat': '12.345',
-            'lng': '99.888',
-          },
-        ],
-      },
-    ];
-
+  Future<void> _search() async {
     final input = phoneController.text.trim();
-    final results = dummyData
-        .where((data) => data['phone']!.contains(input))
-        .toList();
-
-    setState(() {
-      searchResults = results;
-    });
-
-    if (results.isEmpty) {
+    if (input.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('ไม่พบข้อมูลผู้รับสินค้า')));
+      ).showSnackBar(const SnackBar(content: Text('กรุณากรอกเบอร์โทรศัพท์')));
+      return;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('User')
+          .where('phone', isEqualTo: input)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        setState(() {
+          searchResults = [];
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('ไม่พบผู้ใช้เบอร์นี้')));
+        return;
+      }
+
+      // แปลงข้อมูลเอกสารให้เป็น Map
+      final results = snapshot.docs.map((doc) {
+        final data = doc.data();
+        List<Map<String, dynamic>> addresses = [];
+        if (data['addresses'] != null) {
+          addresses = List<Map<String, dynamic>>.from(data['addresses']);
+        }
+        return {
+          'userId': doc.id, // เพิ่ม userId ของ document
+          'name': '${data['firstName']} ${data['lastName']}',
+          'phone': data['phone'],
+          'addresses': addresses,
+        };
+      }).toList();
+
+      setState(() {
+        searchResults = results;
+      });
+    } catch (e) {
+      print("Error searching user: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('เกิดข้อผิดพลาดในการค้นหา')));
     }
   }
 
@@ -128,8 +122,6 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
               ),
             ),
             const SizedBox(height: 24),
-
-            //ค้นหา
             if (searchResults.isNotEmpty)
               Expanded(
                 child: ListView.builder(
@@ -168,9 +160,8 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => SelectAddressPage(
-                                      addresses:
-                                          receiver['addresses']
-                                              as List<Map<String, String>>,
+                                      userId:
+                                          receiver['userId'], // ส่ง userId ไปด้วย
                                     ),
                                   ),
                                 );

@@ -8,8 +8,8 @@ import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
 
 class UserProflie extends StatefulWidget {
-  final String phone;
-  const UserProflie({super.key, required this.phone});
+  final String userId; // รับ id ไม่ซ้ำ
+  const UserProflie({super.key, required this.userId});
 
   @override
   State<UserProflie> createState() => _UserProflieState();
@@ -26,14 +26,13 @@ class _UserProflieState extends State<UserProflie> {
 
   Future<void> fetchUserData() async {
     try {
-      var snapshot = await FirebaseFirestore.instance
+      var doc = await FirebaseFirestore.instance
           .collection("User")
-          .where("phone", isEqualTo: widget.phone)
+          .doc(widget.userId)
           .get();
-
-      if (snapshot.docs.isNotEmpty) {
+      if (doc.exists) {
         setState(() {
-          userData = snapshot.docs.first.data();
+          userData = doc.data();
         });
       }
     } catch (e) {
@@ -123,7 +122,9 @@ class _UserProflieState extends State<UserProflie> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const GPSandMapPage(),
+                                    builder: (context) => AddAddressPage(
+                                      userId: widget.userId,
+                                    ), // ส่ง userId ไป
                                   ),
                                 );
                               },
