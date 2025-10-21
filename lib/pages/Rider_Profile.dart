@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:delivery/pages/Rider_function/Rider_history.dart';
 import 'package:delivery/pages/Rider_function/Rider_order.dart';
 import 'package:delivery/pages/Rider_function/Rider_work.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
+
 class RiderProfile extends StatefulWidget {
   final String userId;
   const RiderProfile({super.key, required this.userId});
@@ -56,37 +56,39 @@ class _RiderProfileState extends State<RiderProfile> {
             color: const Color(0xFF4A90E2),
             borderRadius: BorderRadius.circular(12),
           ),
-child: Column(
-  children: [
-    Row(
-      children: [
-        CircleAvatar(
-          radius: 35,
-          backgroundImage: (profileUrl != null && profileUrl.isNotEmpty)
-              ? NetworkImage(profileUrl)
-              : const AssetImage("assets/images/rider.png") as ImageProvider,
-        ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 35,
+                    backgroundImage:
+                        (profileUrl != null && profileUrl.isNotEmpty)
+                        ? NetworkImage(profileUrl)
+                        : const AssetImage("assets/images/rider.png")
+                              as ImageProvider,
+                  ),
 
-        const SizedBox(width: 15),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "${riderData!['firstName']} ${riderData!['lastName']}",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                  const SizedBox(width: 15),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${riderData!['firstName']} ${riderData!['lastName']}",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        riderData!['phone'],
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            Text(
-              riderData!['phone'],
-              style: const TextStyle(color: Colors.white70),
-            ),
-          ],
-        ),
-      ],
-    ),
               const SizedBox(height: 20),
 
               _menuButton(
@@ -112,18 +114,6 @@ child: Column(
                 },
               ),
               const SizedBox(height: 10),
-
-              _menuButton(
-                icon: Icons.history,
-                text: "ประวัติการส่ง",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RiderHistoryPage()),
-                    
-                  );
-                },
-              ),
 
               const SizedBox(height: 25),
 
