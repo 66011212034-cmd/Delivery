@@ -4,10 +4,9 @@ import 'package:delivery/pages/Rider_function/Rider_order.dart';
 import 'package:delivery/pages/Rider_function/Rider_work.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
-
 class RiderProfile extends StatefulWidget {
-  final String phone;
-  const RiderProfile({super.key, required this.phone});
+  final String userId;
+  const RiderProfile({super.key, required this.userId});
 
   @override
   State<RiderProfile> createState() => _RiderProfileState();
@@ -24,14 +23,14 @@ class _RiderProfileState extends State<RiderProfile> {
 
   Future<void> fetchRiderData() async {
     try {
-      var snapshot = await FirebaseFirestore.instance
+      var doc = await FirebaseFirestore.instance
           .collection("Rider")
-          .where("phone", isEqualTo: widget.phone)
+          .doc(widget.userId)
           .get();
 
-      if (snapshot.docs.isNotEmpty) {
+      if (doc.exists) {
         setState(() {
-          riderData = snapshot.docs.first.data();
+          riderData = doc.data();
         });
       }
     } catch (e) {
@@ -45,6 +44,8 @@ class _RiderProfileState extends State<RiderProfile> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final profileUrl = riderData?['profileUrl'] as String?;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
       body: Center(
@@ -55,35 +56,37 @@ class _RiderProfileState extends State<RiderProfile> {
             color: const Color(0xFF4A90E2),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 35,
-                    backgroundImage: AssetImage("assets/images/rider.png"),
-                  ),
-                  const SizedBox(width: 15),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${riderData!['firstName']} ${riderData!['lastName']}",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        riderData!['phone'],
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ],
+child: Column(
+  children: [
+    Row(
+      children: [
+        CircleAvatar(
+          radius: 35,
+          backgroundImage: (profileUrl != null && profileUrl.isNotEmpty)
+              ? NetworkImage(profileUrl)
+              : const AssetImage("assets/images/rider.png") as ImageProvider,
+        ),
+
+        const SizedBox(width: 15),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "${riderData!['firstName']} ${riderData!['lastName']}",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
+            ),
+            Text(
+              riderData!['phone'],
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+      ],
+    ),
               const SizedBox(height: 20),
 
               _menuButton(

@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SelectScreen(phone: '',),
+                          builder: (context) => const SelectScreen(phone: ''),
                         ),
                       );
                     },
@@ -183,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // เลือก collection ตาม role
     String collection = selectedRole == "ผู้ใช้ทั่วไป" ? "User" : "Rider";
 
     try {
@@ -199,21 +198,30 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      var userData = snapshot.docs.first.data();
+      var userDoc = snapshot.docs.first; // <-- เพิ่มตรงนี้
+      var userData = userDoc.data();
+      var userId = userDoc.id; // <-- นี่คือ id ที่ไม่ซ้ำ
 
       if (userData["password"] == password) {
-        // รหัสถูกต้อง → ไปหน้าโปรไฟล์ตาม role
         if (selectedRole == "ผู้ใช้ทั่วไป") {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => UserProflie(phone: phone)),
+            MaterialPageRoute(
+              builder: (context) => UserProflie(userId: userId), // ส่ง id
+            ),
           );
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => RiderProfile(phone: phone)),
+            MaterialPageRoute(
+              builder: (context) => RiderProfile(userId: userId), // ส่ง id
+            ),
           );
         }
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("รหัสผ่านไม่ถูกต้อง")));
       }
     } catch (e) {
       print("Login error: $e");
