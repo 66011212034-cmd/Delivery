@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class OrderDetailPage extends StatelessWidget {
   final String orderId; //ตัวแปรรับidจากหน้าก่อนหน้า
@@ -105,15 +107,41 @@ class OrderDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Container(
-                    height: 120,
+                    margin: const EdgeInsets.all(16),
+                    height: 250,
                     decoration: BoxDecoration(
-                      color: Colors.blue[100],
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(15),
+                      color: Colors.grey[300],
                     ),
-                    child: const Center(
-                      child: Text(
-                        "แผนที่การเดินทาง Rider",
-                        style: TextStyle(color: Colors.black),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(16.246373, 103.251827),
+                          initialZoom: 15.2,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey=f40b14c2ac6146e39fb5c55a0fbf124b',
+                            userAgentPackageName: 'com.example.delivery',
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              //ตรงนี้คือมาคจุดตำเเหน่่ง
+                              // Marker(
+                              //   point: LatLng(16.246373, 103.251827),
+                              //   width: 50,
+                              //   height: 50,
+                              //   child: const Icon(
+                              //     Icons.location_on,
+                              //     color: Colors.red,
+                              //     size: 40,
+                              //   ),
+                              // ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),

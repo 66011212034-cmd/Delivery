@@ -1,5 +1,7 @@
 import 'package:delivery/pages/๊User_function/follow_one_order.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 //ติดตามสถานะสินค้าที่รับ
 class FollowAllReceivedPage extends StatelessWidget {
@@ -53,7 +55,7 @@ class FollowAllReceivedPage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            //แผน
+            //แผนที่
             Container(
               margin: const EdgeInsets.all(16),
               height: 250,
@@ -61,8 +63,35 @@ class FollowAllReceivedPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(15),
                 color: Colors.grey[300],
               ),
-              child: const Center(
-                child: Icon(Icons.map, color: Colors.grey, size: 80),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng(16.246373, 103.251827),
+                    initialZoom: 15.2,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey=f40b14c2ac6146e39fb5c55a0fbf124b',
+                      userAgentPackageName: 'com.example.delivery',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(16.246373, 103.251827),
+                          width: 50,
+                          height: 50,
+                          child: const Icon(
+                            Icons.location_on,
+                            color: Colors.red,
+                            size: 40,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
 
