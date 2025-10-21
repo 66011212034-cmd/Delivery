@@ -1,5 +1,5 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
 class GPSandMapPage extends StatefulWidget {
@@ -10,46 +10,64 @@ class GPSandMapPage extends StatefulWidget {
 }
 
 class _GPSandMapPageState extends State<GPSandMapPage> {
-  String locationMessage = "ตำแหน่งยังไม่ถูกระบุ";
-// ได้ยังงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงงง
-  Future<Position> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  GoogleMapController? mapController;
+  LatLng? currentPosition;
+  bool isLoading = false;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('กรุณาเปิด Location Service');
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error('สิทธิ์ถูกปฏิเสธถาวร');
-    }
-
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+  @override
+  void initState() {
+    super.initState();
+    // ✅ เรียกหลังจาก UI โหลดเสร็จ (ป้องกันค้าง)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _getCurrentPosition();
+    });
   }
 
-  Future<void> _getCurrentLocation() async {
+  Future<void> _getCurrentPosition() async {
     try {
-      Position position = await _determinePosition();
+      setState(() => isLoading = true);
+
+      // ตรวจสอบว่าเปิด Location Service หรือยัง
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'กรุณาเปิด Location Service';
+      }
+
+      // ตรวจสอบสิทธิ์เข้าถึงตำแหน่ง
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'ไม่ได้รับอนุญาตให้เข้าถึงตำแหน่ง';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'สิทธิ์ถูกปฏิเสธแบบถาวร กรุณาเปิดสิทธิ์ใน Settings';
+      }
+
+      // ✅ ดึงตำแหน่งปัจจุบัน
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
       setState(() {
-        locationMessage =
-            "ละติจูด: ${position.latitude}, ลองจิจูด: ${position.longitude}";
+        currentPosition = LatLng(position.latitude, position.longitude);
+        isLoading = false;
       });
-      log('ตำแหน่งปัจจุบัน: ${position.latitude}, ${position.longitude}');
+
+      // ขยับกล้องไปตำแหน่งปัจจุบัน
+      mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(currentPosition!, 17),
+      );
     } catch (e) {
-      setState(() {
-        locationMessage = "เกิดข้อผิดพลาด: $e";
-      });
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('เกิดข้อผิดพลาด: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -58,42 +76,73 @@ class _GPSandMapPageState extends State<GPSandMapPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
       appBar: AppBar(
-        title: const Text('GPS and Map'),
         backgroundColor: const Color(0xFF0C3B66),
+        title: const Text(
+          "เลือกตำแหน่งบนแผนที่",
+          style: TextStyle(color: Colors.white),
+        ),
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _getCurrentPosition, // 🔁 ปุ่มรีเฟรชตำแหน่ง
+          ),
+        ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.location_on, color: Colors.white, size: 80),
-              const SizedBox(height: 20),
-              Text(
-                locationMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+      body: Stack(
+        children: [
+          if (currentPosition == null)
+            const Center(
+              child: Text(
+                'กำลังค้นหาตำแหน่ง...',
+                style: TextStyle(color: Colors.white, fontSize: 18),
               ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _getCurrentLocation,
+            )
+          else
+            GoogleMap(
+              onMapCreated: (controller) => mapController = controller,
+              initialCameraPosition: CameraPosition(
+                target: currentPosition!,
+                zoom: 17,
+              ),
+              markers: {
+                Marker(
+                  markerId: const MarkerId("current"),
+                  position: currentPosition!,
+                  draggable: true,
+                ),
+              },
+            ),
+
+          // ปุ่มยืนยันตำแหน่ง
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        if (currentPosition != null) {
+                          Navigator.pop(context, currentPosition);
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF0C3B66),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 60,
-                    vertical: 14,
-                  ),
+                  minimumSize: const Size(double.infinity, 48),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('ดึงตำแหน่งปัจจุบัน'),
+                child: isLoading
+                    ? const CircularProgressIndicator(color: Color(0xFF0C3B66))
+                    : const Text("ยืนยันตำแหน่ง"),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
