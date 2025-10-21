@@ -156,24 +156,22 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
                             alignment: Alignment.centerRight,
                             child: ElevatedButton(
                               onPressed: () async {
-                                final selected = await Navigator.push(
+                                final selectedAddress = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => SelectAddressPage(
-                                      userId:
-                                          receiver['userId'], // ส่ง userId ไปด้วย
+                                      userId: receiver['userId'],
                                     ),
                                   ),
                                 );
 
-                                if (selected != null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'เลือกที่อยู่: ${selected['name']}',
-                                      ),
-                                    ),
-                                  );
+                                if (selectedAddress != null) {
+                                  // ส่งข้อมูลกลับ CreateParcelScreen
+                                  Navigator.pop(context, {
+                                    'name': receiver['name'],
+                                    'phone': receiver['phone'],
+                                    'address': selectedAddress['address'],
+                                  });
                                 }
                               },
                               style: ElevatedButton.styleFrom(

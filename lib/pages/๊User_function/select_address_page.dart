@@ -146,7 +146,11 @@ class _SelectAddressPageState extends State<SelectAddressPage> {
             const SizedBox(height: 10),
             ElevatedButton(
               onPressed: selectedAddress != null
-                  ? () => Navigator.pop(context, selectedAddress)
+                  ? () {
+                      Navigator.pop(context, {
+                        'address': selectedAddress!['name'], // ส่งเฉพาะที่อยู่
+                      });
+                    }
                   : null,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
               child: const Text(

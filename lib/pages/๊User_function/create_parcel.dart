@@ -1,5 +1,6 @@
 import 'package:delivery/pages/%E0%B9%8AUser_function/search_customer_page.dart';
 import 'package:flutter/material.dart';
+
 //สร้างรายการ
 class CreateParcelScreen extends StatefulWidget {
   const CreateParcelScreen({super.key});
@@ -16,19 +17,6 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
   final TextEditingController receiverAddressController =
       TextEditingController();
 
-  // File? selectedImage;เลือกรูป
-
-  /*
-  Future<void> _pickImage() async {
-    final pickedImage =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedImage != null) {
-      setState(() {
-        selectedImage = File(pickedImage.path);
-      });
-    }
-  }
-  */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,10 +56,19 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 ),
                 const SizedBox(height: 10),
 
+                // ชื่อสินค้า
+                const Text(
+                  "ชื่อสินค้า",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: productNameController,
                   decoration: InputDecoration(
-                    hintText: "ชื่อสินค้า",
+                    hintText: "กรอกชื่อสินค้า",
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -86,11 +83,20 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 ),
                 const SizedBox(height: 10),
 
+                // ราคาสินค้า
+                const Text(
+                  "ราคาสินค้า",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: priceController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    hintText: "ราคาสินค้า",
+                    hintText: "กรอกราคาสินค้า",
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -103,8 +109,24 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
 
+                ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.image, color: Colors.white),
+                  label: const Text(
+                    "เลือกรูปสินค้า",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0C3B66),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
+
                 const Text(
                   "ข้อมูลผู้รับสินค้า",
                   style: TextStyle(
@@ -118,13 +140,24 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final selectedReceiver = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const SearchCustomerPage(),
                         ),
                       );
+
+                      if (selectedReceiver != null) {
+                        setState(() {
+                          receiverNameController.text =
+                              selectedReceiver['name'] ?? '';
+                          receiverPhoneController.text =
+                              selectedReceiver['phone'] ?? '';
+                          receiverAddressController.text =
+                              selectedReceiver['address'] ?? '';
+                        });
+                      }
                     },
                     icon: const Icon(Icons.search, color: Colors.white),
                     label: const Text(
@@ -141,10 +174,19 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 ),
                 const SizedBox(height: 10),
 
+                // ชื่อผู้รับ
+                const Text(
+                  "ชื่อผู้รับสินค้า",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: receiverNameController,
                   decoration: InputDecoration(
-                    hintText: "ชื่อผู้รับสินค้า",
+                    hintText: "กรอกชื่อผู้รับสินค้า",
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -158,11 +200,21 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+
+                // เบอร์ผู้รับ
+                const Text(
+                  "เบอร์ผู้รับสินค้า",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: receiverPhoneController,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    hintText: "เบอร์ผู้รับสินค้า",
+                    hintText: "กรอกเบอร์ผู้รับสินค้า",
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -176,11 +228,21 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+
+                // ที่อยู่ผู้รับ
+                const Text(
+                  "ที่อยู่ผู้รับสินค้า",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: receiverAddressController,
                   maxLines: 2,
                   decoration: InputDecoration(
-                    hintText: "ที่อยู่ผู้รับสินค้า",
+                    hintText: "กรอกที่อยู่ผู้รับสินค้า",
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
@@ -203,29 +265,11 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 10),
-
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.image, color: Colors.white),
-                  label: const Text(
-                    "เลือกรูปสินค้า",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0C3B66),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    // ต้องเพิ่มฟังก์ชันจการเช็คด้วยว่าข้อมูลครบหรือไม่
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
