@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:delivery/pages/Rider_function/Rider_history.dart';
 import 'package:delivery/pages/Rider_function/Rider_order.dart';
 import 'package:delivery/pages/Rider_function/Rider_work.dart';
 import 'package:delivery/pages/page_login.dart';
@@ -44,6 +43,8 @@ class _RiderProfileState extends State<RiderProfile> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final profileUrl = riderData?['profileUrl'] as String?;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
       body: Center(
@@ -55,7 +56,6 @@ class _RiderProfileState extends State<RiderProfile> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
@@ -112,18 +112,6 @@ class _RiderProfileState extends State<RiderProfile> {
                 },
               ),
               const SizedBox(height: 10),
-
-              _menuButton(
-                icon: Icons.history,
-                text: "ประวัติการส่ง",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RiderHistoryPage()),
-                    
-                  );
-                },
-              ),
 
               const SizedBox(height: 25),
 

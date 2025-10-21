@@ -165,69 +165,73 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
- Future<void> loginUser() async {
-  if (selectedRole == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("กรุณาเลือกบทบาทก่อนเข้าสู่ระบบ")),
-    );
-    return;
-  }
-
-  String phone = phoneController.text.trim();
-  String password = passwordController.text.trim();
-
-  if (phone.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("กรุณากรอกเบอร์โทรและรหัสผ่าน")),
-    );
-    return;
-  }
-
-  String collection = selectedRole == "ผู้ใช้ทั่วไป" ? "User" : "Rider";
-
-  try {
-    var snapshot = await FirebaseFirestore.instance
-        .collection(collection)
-        .where("phone", isEqualTo: phone)
-        .get();
-
-    if (snapshot.docs.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("ไม่พบผู้ใช้")));
+  Future<void> loginUser() async {
+    if (selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("กรุณาเลือกบทบาทก่อนเข้าสู่ระบบ")),
+      );
       return;
     }
 
-    var userDoc = snapshot.docs.first; // <-- เพิ่มตรงนี้
-    var userData = userDoc.data();
-    var userId = userDoc.id;          // <-- นี่คือ id ที่ไม่ซ้ำ
+    String phone = phoneController.text.trim();
+    String password = passwordController.text.trim();
 
-    if (userData["password"] == password) {
-      if (selectedRole == "ผู้ใช้ทั่วไป") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => UserProflie(userId: userId), // ส่ง id
-          ),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RiderProfile(userId: userId), // ส่ง id
-          ),
-        );
-      }
-    } else {
+    if (phone.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("รหัสผ่านไม่ถูกต้อง")),
+        const SnackBar(content: Text("กรุณากรอกเบอร์โทรและรหัสผ่าน")),
+      );
+      return;
+    }
+
+    String collection = selectedRole == "ผู้ใช้ทั่วไป" ? "User" : "Rider";
+
+    try {
+      // 🔹 ดึงข้อมูลผู้ใช้จาก Firestore
+      var snapshot = await FirebaseFirestore.instance
+          .collection(collection)
+          .where("phone", isEqualTo: phone)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("ไม่พบผู้ใช้ในระบบ")));
+        return;
+      }
+
+      var userDoc = snapshot.docs.first;
+      var userData = userDoc.data();
+      var userId = userDoc.id; // ✅ id ที่ไม่ซ้ำของผู้ใช้
+
+      // 🔹 ตรวจสอบรหัสผ่าน
+      if (userData["password"] == password) {
+        // ✅ ถ้าผ่านให้ไปหน้าตามบทบาท
+        if (selectedRole == "ผู้ใช้ทั่วไป") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserProflie(userId: userId),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RiderProfile(userId: userId),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("รหัสผ่านไม่ถูกต้อง")));
+      }
+    } catch (e) {
+      print("Login error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")),
       );
     }
-  } catch (e) {
-    print("Login error: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("เกิดข้อผิดพลาด กรุณาลองใหม่")),
-    );
   }
-}
-
 }

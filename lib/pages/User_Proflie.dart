@@ -64,8 +64,10 @@ class _UserProflieState extends State<UserProflie> {
                   children: [
                     CircleAvatar(
                       radius: 35,
-                      backgroundImage: userData!['profileUrl'] != ""
-                          ? NetworkImage(userData!['profileUrl'])
+                      backgroundImage:
+                          (userData!['profileUrl'] != null &&
+                              (userData!['profileUrl'] as String).isNotEmpty)
+                          ? NetworkImage(userData!['profileUrl'] as String)
                           : const AssetImage("assets/images/profile.png")
                                 as ImageProvider,
                     ),
