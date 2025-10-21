@@ -38,7 +38,6 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
         return;
       }
 
-      // แปลงข้อมูลเอกสารให้เป็น Map
       final results = snapshot.docs.map((doc) {
         final data = doc.data();
         List<Map<String, dynamic>> addresses = [];

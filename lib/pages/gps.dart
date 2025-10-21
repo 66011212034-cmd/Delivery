@@ -90,8 +90,12 @@ class _GPSandMapPageState extends State<GPSandMapPage> {
 
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF0C3B66),
-              padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 14),
+              backgroundColor: Colors.blue, // 🔹 สีน้ำเงินหลัก
+              foregroundColor: Colors.white, // สีตัวอักษร
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10), // มุมโค้งนิดหน่อย
+              ),
             ),
             onPressed: () {
               if (selectedPoint != null) {

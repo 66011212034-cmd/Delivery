@@ -265,6 +265,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
