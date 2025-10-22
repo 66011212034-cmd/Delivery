@@ -150,13 +150,15 @@ class _UserProflieState extends State<UserProflie> {
                                 ),
                               ),
                               icon: const Icon(Icons.inventory),
-                              label: const Text("สร้างรายการสั่งของ"),
+                              label: const Text("สร้างรายการส่งของ"),
                               onPressed: () {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        const CreateParcelScreen(),
+                                    builder: (context) => CreateParcelScreen(
+                                      senderId: widget
+                                          .userId, // ใช้ userId ของผู้ที่ล็อกอิน
+                                    ),
                                   ),
                                 );
                               },
@@ -185,8 +187,9 @@ class _UserProflieState extends State<UserProflie> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        const FollowAllOrderPage(),
+                                    builder: (context) => FollowAllOrderPage(
+                                      userId: widget.userId,
+                                    ),
                                   ),
                                 );
                               },
@@ -211,8 +214,9 @@ class _UserProflieState extends State<UserProflie> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        const FollowAllReceivedPage(),
+                                    builder: (context) => FollowAllReceivedPage(
+                                      userId: widget.userId,
+                                    ),
                                   ),
                                 );
                               },

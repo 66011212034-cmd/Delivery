@@ -1,41 +1,57 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:delivery/pages/๊User_function/follow_one_order.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-//ติดตามสถานะสินค้าที่รับ
-class FollowAllReceivedPage extends StatelessWidget {
-  const FollowAllReceivedPage({super.key});
+class FollowAllReceivedPage extends StatefulWidget {
+  final String userId; // รับไอดีผู้รับ
+  const FollowAllReceivedPage({super.key, required this.userId});
+
+  @override
+  State<FollowAllReceivedPage> createState() => _FollowAllReceivedPageState();
+}
+
+class _FollowAllReceivedPageState extends State<FollowAllReceivedPage> {
+  List<Map<String, dynamic>> orders = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchOrders();
+  }
+
+  Future<void> fetchOrders() async {
+    try {
+      print("User ID ที่ส่งเข้ามา: ${widget.userId}");
+      final snapshot = await FirebaseFirestore.instance
+          .collection("Order")
+          .where("userId", isEqualTo: widget.userId)
+          // .orderBy("createdAt", descending: true) // ถ้าต้องการเรียงตามวันที่
+          .get();
+
+      print("จำนวนเอกสารที่เจอ: ${snapshot.docs.length}");
+
+      setState(() {
+        orders = snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching orders: $e");
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    //ข้อมูลออเดอร์ทั้งหมด
-    final List<Map<String, dynamic>> orders = [
-      {
-        'id': '098765431',
-        'status': 'รอไรเดอร์รับสินค้า',
-        'price': '200',
-        'product': 'ข้าวกล่อง',
-        'address': 'ม.เทคโนโลยีราชมงคลธัญบุรี',
-        'image': 'assets/images/rider1.png',
-      },
-      {
-        'id': '123456789',
-        'status': 'ไรเดอร์รับสินค้าแล้ว',
-        'price': '80,000',
-        'product': 'iPhone 17 Pro Max',
-        'address': 'คณะวิทยาการสารสนเทศ ม.ใหม่ มหาวิทยาลัยมหาสารคาม',
-        'image': 'assets/images/rider2.png',
-      },
-      {
-        'id': '555555555',
-        'status': 'ไรเดอร์อยู่ระหว่างนำส่งสินค้า',
-        'price': '127',
-        'product': 'กาแฟ 3 กล่อง',
-        'address': 'หอพักพีรดา อ.เมือง จ.ขอนแก่น',
-        'image': 'assets/images/rider3.png',
-      },
-    ];
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
@@ -55,7 +71,7 @@ class FollowAllReceivedPage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            //แผนที่
+            // แผนที่
             Container(
               margin: const EdgeInsets.all(16),
               height: 250,
@@ -95,7 +111,7 @@ class FollowAllReceivedPage extends StatelessWidget {
               ),
             ),
 
-            //จำนวนรายการ
+            // จำนวนออเดอร์ทั้งหมด
             Container(
               width: double.infinity,
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -126,10 +142,11 @@ class FollowAllReceivedPage extends StatelessWidget {
 
             const SizedBox(height: 10),
 
+            // แสดงรายการออเดอร์
             for (var order in orders)
               OrderCard(
-                status: order['status'],
-                price: order['price'],
+                status: order['status'] ?? "ไม่ระบุสถานะ",
+                price: "${order['total_cost'] ?? 0}",
                 orderData: order,
               ),
 

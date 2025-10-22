@@ -388,63 +388,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<bool> Register(String role) async {
     var db = FirebaseFirestore.instance;
-    String? profileUrl;
-    String? vehicleUrl;
     DocumentReference? userRef;
 
-    // 1. Upload profile
-    if (profileImage != null) {
-      try {
-        final storageRef = FirebaseStorage.instance.ref().child(
-          "${role}_${phoneController.text.trim()}_profile.jpg",
-        );
-        final snapshot = await storageRef.putFile(profileImage!);
-        if (snapshot.state == TaskState.success) {
-          profileUrl = await storageRef.getDownloadURL();
-          print("Profile uploaded: $profileUrl");
-        } else {
-          print("Profile upload not successful: ${snapshot.state}");
-        }
-      } catch (e) {
-        print("Error uploading profile: $e");
-      }
-    }
+    // 1️⃣ Prepare paths ของไฟล์
+    String? profilePath = profileImage?.path;
+    String? vehiclePath = vehicleImage?.path;
 
-    // 2. Upload vehicle (rider)
-    if (role == "rider" && vehicleImage != null) {
-      try {
-        final storageRef = FirebaseStorage.instance.ref().child(
-          "${role}_${phoneController.text.trim()}_vehicle.jpg",
-        );
-        final snapshot = await storageRef.putFile(vehicleImage!);
-        if (snapshot.state == TaskState.success) {
-          vehicleUrl = await storageRef.getDownloadURL();
-          print("Vehicle uploaded: $vehicleUrl");
-        } else {
-          print("Vehicle upload not successful: ${snapshot.state}");
-        }
-      } catch (e) {
-        print("Error uploading vehicle: $e");
-      }
-    }
-
-    // 3. Create user data
+    // 2️⃣ สร้าง user data
     Map<String, dynamic> userData = {
       "phone": phoneController.text.trim(),
       "firstName": firstNameController.text.trim(),
       "lastName": lastNameController.text.trim(),
       "password": passwordController.text.trim(),
-      "profileUrl": profileUrl ?? "",
+      "profilePath": profilePath ?? "",
     };
 
-    // 4. Add user to Firestore
+    // 3️⃣ เพิ่มข้อมูล Rider ถ้า role เป็น rider
+    if (role == "rider") {
+      userData["license"] = licenseController.text.trim();
+      userData["vehiclePath"] = vehiclePath ?? "";
+    }
+
+    // 4️⃣ เพิ่ม user/rider ลง Firestore
     try {
       if (role == "user") {
         userRef = await db.collection("User").add(userData);
         print("User document created: ${userRef.id}");
       } else if (role == "rider") {
-        userData["license"] = licenseController.text.trim();
-        userData["vehicleUrl"] = vehicleUrl ?? "";
         userRef = await db.collection("Rider").add(userData);
         print("Rider document created: ${userRef.id}");
       }
@@ -453,7 +423,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return false;
     }
 
-    // 5. Add address (user only)
+    // 5️⃣ เพิ่ม address ถ้าเป็น user
     if (role == "user" && selectedLocation != null) {
       try {
         Map<String, dynamic> addressData = {

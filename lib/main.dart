@@ -28,9 +28,9 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       theme: ThemeData(textTheme: GoogleFonts.notoSansThaiLoopedTextTheme()),
       title: 'Flutter Demo',
-      home: const SelectScreen(phone: '',),
-      // home: const FollowOneOrderPage(orderData: {},),  
-    
+      home: const SelectScreen(phone: ''),
+
+      // home: const FollowOneOrderPage(orderData: {},),
     );
   }
 }

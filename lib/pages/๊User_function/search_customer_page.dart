@@ -171,6 +171,7 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
                                     'name': receiver['name'],
                                     'phone': receiver['phone'],
                                     'address': selectedAddress['address'],
+                                    'userId': receiver['userId'],
                                   });
                                 }
                               },
