@@ -386,7 +386,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
     }
 
     try {
-      // 1️⃣ บันทึกไฟล์ลง local ก่อน (เหมือน Register)
+      // 1️⃣ บันทึกไฟล์ลง local ก่อน
       final Directory appDir = await getApplicationDocumentsDirectory();
       final String fileName =
           "parcel_${DateTime.now().millisecondsSinceEpoch}_${productNameController.text}.jpg";
@@ -394,26 +394,26 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
       await productImage!.copy(localFile.path);
       print("✅ File saved locally: ${localFile.path}");
 
-      // 2️⃣ เพิ่มข้อมูล Parcel ใน Firestore ใช้ path local แทน URL
-      final parcelRef = await FirebaseFirestore.instance
-          .collection("Parcel")
-          .add({
-            "name": productNameController.text.trim(),
-            "price": double.tryParse(priceController.text.trim()) ?? 0,
-            "createdAt": Timestamp.now(),
-          });
+      // 2️⃣ สร้าง Order ก่อน เพื่อให้ได้ orderId
+      final orderRef = await FirebaseFirestore.instance.collection("Order").add(
+        {
+          "userId": receiveruserIdController.text.trim(), // ผู้รับ
+          "senderId": widget.senderId, // ผู้ส่ง
+          "receiverName": receiverNameController.text.trim(),
+          "receiverAddress": receiverAddressController.text.trim(),
+          "total_cost": double.tryParse(priceController.text.trim()) ?? 0,
+          "status": "รอไรเดอร์รับออเดอร์",
+          "imagePath": localFile.path, // path local
+          "createdAt": Timestamp.now(),
+        },
+      );
 
-      // 3️⃣ เพิ่มข้อมูล Order โดยอ้างถึง Parcel
-      await FirebaseFirestore.instance.collection("Order").add({
-        "userId": receiveruserIdController.text.trim(), // ผู้รับ
-        "senderId": widget.senderId, // ผู้ส่ง
-        "receiverName": receiverNameController.text.trim(),
-        "receiverAddress": receiverAddressController.text.trim(),
-        "total_cost": double.tryParse(priceController.text.trim()) ?? 0,
-        "status": "รอไรเดอร์รับออเดอร์",
-        "imagePath": localFile.path, // path local
-        "parcelId": parcelRef.id,
+      // 3️⃣ สร้าง Parcel โดยใส่ orderId ไปด้วย
+      await FirebaseFirestore.instance.collection("Parcel").add({
+        "name": productNameController.text.trim(),
+        "price": double.tryParse(priceController.text.trim()) ?? 0,
         "createdAt": Timestamp.now(),
+        "orderId": orderRef.id, // ใส่ ID ของออเดอร์ที่สร้างไว้
       });
 
       ScaffoldMessenger.of(context).showSnackBar(

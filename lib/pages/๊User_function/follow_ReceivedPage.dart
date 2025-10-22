@@ -220,11 +220,14 @@ class OrderCard extends StatelessWidget {
                 ),
               ),
               onPressed: () {
+                final orderId = orderData['id'];
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        FollowOneOrderPage(orderData: orderData),
+                    builder: (context) => FollowOneOrderPage(
+                      orderId: orderId, // ส่งเฉพาะ orderId ไป
+                      orderData: orderData, // (ถ้าอยากส่งข้อมูลอื่นไปด้วยก็ได้)
+                    ),
                   ),
                 );
               },

@@ -223,14 +223,18 @@ class OrderCard extends StatelessWidget {
                 ),
               ),
               onPressed: () {
+                final orderId = orderData['id']; // ดึง doc.id ที่เราเก็บไว้ตอน fetch
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        FollowOneOrderPage(orderData: orderData),
+                    builder: (context) => FollowOneOrderPage(
+                      orderId: orderId, // ส่งเฉพาะ orderId ไป
+                      orderData: orderData, // (ถ้าอยากส่งข้อมูลอื่นไปด้วยก็ได้)
+                    ),
                   ),
                 );
               },
+
               child: const Text("คลิกเพื่อติดตาม"),
             ),
           ),
