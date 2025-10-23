@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:delivery/pages/Rider_function/Rider_order.dart';
-import 'package:delivery/pages/Rider_function/Rider_work.dart';
+import 'package:delivery/pages/Rider_function/order_detail_page.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
+
 class RiderProfile extends StatefulWidget {
   final String userId;
   const RiderProfile({super.key, required this.userId});
@@ -37,6 +37,20 @@ class _RiderProfileState extends State<RiderProfile> {
     }
   }
 
+  /// ✅ ดึงข้อมูลออเดอร์ที่รอไรเดอร์รับเท่านั้น
+  Stream<QuerySnapshot> getAvailableOrders() {
+    return FirebaseFirestore.instance
+        .collection("Order")
+        .where("status", isEqualTo: "รอไรเดอร์รับออเดอร์")
+        .snapshots();
+  }
+
+  /// ✅ ฟังก์ชันรีเฟรชหน้า
+  Future<void> _refreshOrders() async {
+    setState(() {});
+    await Future.delayed(const Duration(seconds: 1)); // โหลดใหม่เล็กน้อย
+  }
+
   @override
   Widget build(BuildContext context) {
     if (riderData == null) {
@@ -66,7 +80,6 @@ class _RiderProfileState extends State<RiderProfile> {
                         : const AssetImage("assets/images/rider.png")
                               as ImageProvider,
                   ),
-
                   const SizedBox(width: 15),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,33 +101,66 @@ class _RiderProfileState extends State<RiderProfile> {
                 ],
               ),
               const SizedBox(height: 20),
+              // ✅ ปุ่มดูงานที่กำลังรับ
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.assignment, color: Colors.black),
+                  label: const Text(
+                    "งานที่กำลังรับ",
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orangeAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () async {
+                    // ดึงออเดอร์ที่ไรเดอร์กำลังรับ
+                    final querySnapshot = await FirebaseFirestore.instance
+                        .collection("Order")
+                        .where("riderId", isEqualTo: widget.userId)
+                        .where("status", isEqualTo: "กำลังจัดส่งงาน")
+                        .get();
 
-              _menuButton(
-                icon: Icons.assignment,
-                text: "งานที่ได้รับ",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RiderOrder()),
-                  );
-                },
+                    if (querySnapshot.docs.isEmpty) {
+                      // ❌ ไม่มีงานกำลังรับ
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text("ไม่มีงานกำลังรับ"),
+                          content: const Text(
+                            "คุณยังไม่ได้รับงานใด ๆ ในขณะนี้",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text("ตกลง"),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+
+                    // ✅ ถ้ามีงาน กดไปหน้า OrderDetailPage ของงานแรก
+                    final orderDoc = querySnapshot.docs.first;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OrderDetailPage(
+                          orderId: orderDoc.id, // ✅ ถูกต้อง
+                          riderId: widget.userId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 10),
 
-              _menuButton(
-                icon: Icons.delivery_dining,
-                text: "งานที่กำลังดำเนินการ",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const RiderWork()),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-
-              const SizedBox(height: 25),
-
+              // ✅ ปุ่มออกจากระบบ
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -139,49 +185,186 @@ class _RiderProfileState extends State<RiderProfile> {
                   },
                 ),
               ),
+
+              const SizedBox(height: 20),
+
+              // ✅ รายการออเดอร์พร้อมรีเฟรช
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _refreshOrders,
+                  color: Colors.white,
+                  backgroundColor: const Color(0xFF0C3B66),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: getAvailableOrders(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            "ยังไม่มีออเดอร์ให้รับในขณะนี้",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        );
+                      }
+
+                      final orders = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          final data =
+                              orders[index].data() as Map<String, dynamic>;
+
+                          return Card(
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "ผู้รับ: ${data['receiverName'] ?? '-'}",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.shade300,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          data['status'] ?? "",
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "ที่อยู่: ${data['receiverAddress'] ?? '-'}",
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "ค่าจัดส่ง: ${data['total_cost'] ?? 0} ฿",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        final riderDoc = await FirebaseFirestore
+                                            .instance
+                                            .collection("Rider")
+                                            .doc(widget.userId)
+                                            .get();
+
+                                        final riderStatus =
+                                            riderDoc.data()?['status'] ??
+                                            "ว่าง";
+
+                                        if (riderStatus == "กำลังจัดส่งงาน") {
+                                          // ❌ เตือนว่าไม่สามารถรับงานใหม่ได้
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: const Text(
+                                                "ไม่สามารถรับงานได้",
+                                              ),
+                                              content: const Text(
+                                                "คุณกำลังมีงานที่รับอยู่แล้ว ไม่สามารถรับงานซ้ำได้",
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: const Text("ตกลง"),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return; // ออกจากฟังก์ชัน ไม่ไปหน้า OrderDetailPage
+                                        }
+
+                                        // ✅ ถ้าว่าง ให้ไปหน้า OrderDetailPage
+                                        // และอัปเดตสถานะไรเดอร์เป็นกำลังจัดส่งงาน
+                                        await FirebaseFirestore.instance
+                                            .collection("Rider")
+                                            .doc(widget.userId)
+                                            .update({
+                                              'status': 'กำลังจัดส่งงาน',
+                                            });
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => OrderDetailPage(
+                                              orderId: orders[index].id,
+                                              riderId: widget
+                                                  .userId, // ✅ ส่ง userId เป็น riderId
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF0C3B66,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "รับงานนี้",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-
-  Widget _menuButton({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFF0C3B66)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  color: Color(0xFF0C3B66),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.black54,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-///
