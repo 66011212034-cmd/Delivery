@@ -1,8 +1,34 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_popup/flutter_map_marker_popup.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class FollowOneOrderPage extends StatelessWidget {
+// เพิ่มฟังก์ชันเรียกเส้นทางจาก OpenRouteService
+Future<List<LatLng>> getRoutePoints(LatLng start, LatLng end) async {
+  const apiKey =
+      "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVjYzc3MWNkYjJiZDRiZjM4ZmIxNmNlMWI1OTM0MWNjIiwiaCI6Im11cm11cjY0In0="; // 🔑 ใส่ API Key ของคุณ
+  final url = Uri.parse(
+    "https://api.openrouteservice.org/v2/directions/driving-car?api_key=$apiKey&start=${start.longitude},${start.latitude}&end=${end.longitude},${end.latitude}",
+  );
+
+  final response = await http.get(url);
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    final coords = data['features'][0]['geometry']['coordinates'] as List;
+    return coords.map((c) => LatLng(c[1], c[0])).toList();
+  } else {
+    print("Failed to get route: ${response.statusCode}");
+    return [];
+  }
+}
+
+List<List<LatLng>> routeLines = []; // เก็บเส้นทางตามถนนจริง
+
+class FollowOneOrderPage extends StatefulWidget {
   final String orderId;
   final Map<String, dynamic> orderData;
 
@@ -12,32 +38,43 @@ class FollowOneOrderPage extends StatelessWidget {
     required this.orderData,
   });
 
+  @override
+  State<FollowOneOrderPage> createState() => _FollowOneOrderPageState();
+}
+
+class _FollowOneOrderPageState extends State<FollowOneOrderPage> {
+  List<LatLng> routeLine = [];
+
   Future<Map<String, dynamic>?> fetchOrderData() async {
     try {
-      // ✅ ดึงข้อมูล Order
       final orderSnap = await FirebaseFirestore.instance
           .collection('Order')
-          .doc(orderId)
+          .doc(widget.orderId)
           .get();
 
       if (!orderSnap.exists) return null;
+
       final order = orderSnap.data()!;
 
-      // ✅ ดึงข้อมูล Parcel ที่มี orderId ตรงกัน
-      final parcelSnap = await FirebaseFirestore.instance
-          .collection('Parcel')
-          .where('orderId', isEqualTo: orderId)
-          .get();
-
-      if (parcelSnap.docs.isNotEmpty) {
-        order['parcel'] = parcelSnap.docs.first.data();
-      } else {
-        print("⚠️ ไม่พบข้อมูลพัสดุของ orderId: $orderId");
+      // ✅ โหลดเส้นทางจริงตามถนน
+      if (order['pickupLat'] != null && order['receiverLat'] != null) {
+        final line = await getRoutePoints(
+          LatLng(
+            double.parse(order['pickupLat']),
+            double.parse(order['pickupLng']),
+          ),
+          LatLng(
+            double.parse(order['receiverLat']),
+            double.parse(order['receiverLng']),
+          ),
+        );
+        routeLine = line;
+        routeLines = [routeLine];
       }
 
       return order;
     } catch (e) {
-      print("❌ Error fetching order: $e");
+      print("Error: $e");
       return null;
     }
   }
@@ -243,6 +280,155 @@ class FollowOneOrderPage extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
+                  // ✅ แผนที่แสดงตำแหน่งจัดส่ง
+                  // ✅ แผนที่ละเอียดเหมือนหน้า All Orders
+                  Container(
+                    height: 350,
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(
+                            double.parse(order['pickupLat'] ?? '16.246373'),
+                            double.parse(order['pickupLng'] ?? '103.251827'),
+                          ),
+                          initialZoom: 15.0,
+                        ),
+                        children: [
+                          // ✅ พื้นหลังแผนที่
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey=f40b14c2ac6146e39fb5c55a0fbf124b',
+                            userAgentPackageName: 'com.example.delivery',
+                          ),
+
+                          // ✅ เส้นเชื่อม pickup → receiver → rider
+                          PolylineLayer(
+                            polylines: [
+                              for (var line in routeLines)
+                                Polyline(
+                                  points: line,
+                                  color: Colors.green,
+                                  strokeWidth: 4,
+                                ),
+                            ],
+                          ),
+
+                          // ✅ Marker พร้อม popup แสดงข้อมูล
+                          PopupMarkerLayerWidget(
+                            options: PopupMarkerLayerOptions(
+                              markers: [
+                                if (order['riderLat'] != null &&
+                                    order['riderLng'] != null)
+                                  Marker(
+                                    point: LatLng(
+                                      double.parse(
+                                        order['riderLat'].toString(),
+                                      ),
+                                      double.parse(
+                                        order['riderLng'].toString(),
+                                      ),
+                                    ),
+                                    width: 50,
+                                    height: 50,
+                                    child: const Icon(
+                                      Icons.directions_bike,
+                                      color: Colors.blue,
+                                      size: 40,
+                                    ),
+                                  ),
+                                if (order['pickupLat'] != null &&
+                                    order['pickupLng'] != null)
+                                  Marker(
+                                    point: LatLng(
+                                      double.parse(order['pickupLat']),
+                                      double.parse(order['pickupLng']),
+                                    ),
+                                    width: 50,
+                                    height: 50,
+                                    child: const Icon(
+                                      Icons.store,
+                                      color: Colors.orange,
+                                      size: 40,
+                                    ),
+                                  ),
+                                if (order['receiverLat'] != null &&
+                                    order['receiverLng'] != null)
+                                  Marker(
+                                    point: LatLng(
+                                      double.parse(order['receiverLat']),
+                                      double.parse(order['receiverLng']),
+                                    ),
+                                    width: 50,
+                                    height: 50,
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      color: Colors.red,
+                                      size: 40,
+                                    ),
+                                  ),
+                              ],
+                              popupDisplayOptions: PopupDisplayOptions(
+                                builder: (BuildContext context, Marker marker) {
+                                  String type = '';
+
+                                  if (order['riderLat'] != null &&
+                                      marker.point.latitude ==
+                                          double.parse(
+                                            order['riderLat'].toString(),
+                                          ) &&
+                                      marker.point.longitude ==
+                                          double.parse(
+                                            order['riderLng'].toString(),
+                                          )) {
+                                    type = 'Rider';
+                                  } else if (order['pickupLat'] != null &&
+                                      marker.point.latitude ==
+                                          double.parse(
+                                            order['pickupLat'].toString(),
+                                          ) &&
+                                      marker.point.longitude ==
+                                          double.parse(
+                                            order['pickupLng'].toString(),
+                                          )) {
+                                    type = 'Pickup';
+                                  } else if (order['receiverLat'] != null &&
+                                      marker.point.latitude ==
+                                          double.parse(
+                                            order['receiverLat'].toString(),
+                                          ) &&
+                                      marker.point.longitude ==
+                                          double.parse(
+                                            order['receiverLng'].toString(),
+                                          )) {
+                                    type = 'Receiver';
+                                  }
+
+                                  return Card(
+                                    color: Colors.white,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Text(
+                                        'Order: ${widget.orderId}\n$type',
+
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
                   // ✅ รูปภาพพัสดุ
                   Container(
                     padding: const EdgeInsets.all(16),

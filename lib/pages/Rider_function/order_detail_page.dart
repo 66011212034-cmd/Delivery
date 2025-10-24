@@ -1,12 +1,35 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+// เพิ่มฟังก์ชันเรียกเส้นทางจาก OpenRouteService
+Future<List<LatLng>> getRoutePoints(LatLng start, LatLng end) async {
+  const apiKey =
+      "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVjYzc3MWNkYjJiZDRiZjM4ZmIxNmNlMWI1OTM0MWNjIiwiaCI6Im11cm11cjY0In0="; // 🔑 ใส่ API Key ของคุณ
+  final url = Uri.parse(
+    "https://api.openrouteservice.org/v2/directions/driving-car?api_key=$apiKey&start=${start.longitude},${start.latitude}&end=${end.longitude},${end.latitude}",
+  );
+
+  final response = await http.get(url);
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    final coords = data['features'][0]['geometry']['coordinates'] as List;
+    return coords.map((c) => LatLng(c[1], c[0])).toList();
+  } else {
+    print("Failed to get route: ${response.statusCode}");
+    return [];
+  }
+}
 
 class OrderDetailPage extends StatefulWidget {
   final String orderId;
-  final String riderId; // ✅ เพิ่ม
+  final String riderId;
 
   const OrderDetailPage({
     super.key,
@@ -19,142 +42,165 @@ class OrderDetailPage extends StatefulWidget {
 }
 
 class _OrderDetailPageState extends State<OrderDetailPage> {
+  bool isLoading = true;
+  bool _hasAccepted = false;
   Map<String, dynamic>? orderData;
   Map<String, dynamic>? parcelData;
-  bool isLoading = true;
-  bool orderAccepted = false; // เช็คว่ารับงานแล้ว
+  List<LatLng> riderPath = [];
+
+  List<List<LatLng>> routeLines = []; // เก็บเส้นทางตามถนนจริง
+  List<LatLng> currentRoute = []; // สำหรับอัปเดต Polyline แบบเรียลไทม์
+  StreamSubscription<Position>? _positionStream;
 
   @override
   void initState() {
     super.initState();
-    fetchOrderDetails();
-
-    // ✅ เรียก acceptOrder อัตโนมัติหลัง build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      acceptOrder();
+      _initPage(); // โหลดข้อมูลและเส้นทาง
     });
   }
 
-  /// โหลดข้อมูล Order และ Parcel
+  Future<void> _initPage() async {
+    await fetchOrderDetails();
+
+    if (orderData?['riderLat'] != null &&
+        orderData?['pickupLat'] != null &&
+        orderData?['receiverLat'] != null) {
+      final routeFromRider = await getRoutePoints(
+        LatLng(orderData!['riderLat'], orderData!['riderLng']),
+        LatLng(
+          double.parse(orderData!['pickupLat']),
+          double.parse(orderData!['pickupLng']),
+        ),
+      );
+
+      final routeToReceiver = await getRoutePoints(
+        LatLng(
+          double.parse(orderData!['pickupLat']),
+          double.parse(orderData!['pickupLng']),
+        ),
+        LatLng(
+          double.parse(orderData!['receiverLat']),
+          double.parse(orderData!['receiverLng']),
+        ),
+      );
+
+      setState(() {
+        routeLines = [routeFromRider, routeToReceiver];
+      });
+    }
+
+    if (!_hasAccepted) {
+      await acceptOrder();
+      _hasAccepted = true;
+    }
+
+    startRiderLocationTracking();
+  }
+
+  Future<void> startRiderLocationTracking() async {
+    await Geolocator.requestPermission();
+
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5,
+          ),
+        ).listen((Position position) async {
+          await FirebaseFirestore.instance
+              .collection("Order")
+              .doc(widget.orderId)
+              .update({
+                "riderLat": position.latitude,
+                "riderLng": position.longitude,
+              });
+
+          setState(() {
+            orderData?['riderLat'] = position.latitude;
+            orderData?['riderLng'] = position.longitude;
+
+            // เก็บเส้นทาง Rider
+            riderPath.add(LatLng(position.latitude, position.longitude));
+          });
+        });
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel(); // ❌ หยุดติดตาม GPS
+    super.dispose();
+  }
+
+  Future<void> acceptOrder() async {
+    print("🚀 เริ่มทำงาน acceptOrder()");
+
+    try {
+      final position = await _getCurrentPosition();
+      print("📍 พิกัดปัจจุบัน: ${position.latitude}, ${position.longitude}");
+
+      await FirebaseFirestore.instance
+          .collection("Order")
+          .doc(widget.orderId)
+          .set({
+            "status": "กำลังจัดส่งงาน",
+            "riderId": widget.riderId,
+            "riderLat": position.latitude,
+            "riderLng": position.longitude,
+          }, SetOptions(merge: true));
+
+      print("✅ อัปเดต Order สำเร็จ");
+
+      // โหลดข้อมูลใหม่มาแสดง
+      await fetchOrderDetails();
+    } catch (e) {
+      print("❌ เกิดข้อผิดพลาดใน acceptOrder(): $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("อัปเดตออเดอร์ล้มเหลว: $e")));
+    }
+  }
+
+  Future<Position> _getCurrentPosition() async {
+    print("📡 กำลังขอตำแหน่งปัจจุบัน...");
+    return await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+  }
+
   Future<void> fetchOrderDetails() async {
+    print("📦 โหลดข้อมูลออเดอร์จาก Firestore...");
     try {
       final orderDoc = await FirebaseFirestore.instance
           .collection("Order")
           .doc(widget.orderId)
           .get();
 
-      if (orderDoc.exists) {
-        final order = orderDoc.data()!;
-        final parcelSnap = await FirebaseFirestore.instance
-            .collection("Parcel")
-            .where("orderId", isEqualTo: widget.orderId)
-            .limit(1)
-            .get();
-
-        setState(() {
-          orderData = order;
-          parcelData = parcelSnap.docs.isNotEmpty
-              ? parcelSnap.docs.first.data()
-              : null;
-          isLoading = false;
-        });
-      } else {
+      if (!orderDoc.exists) {
+        print("⚠️ ไม่พบเอกสาร Order");
         setState(() => isLoading = false);
+        return;
       }
+
+      final order = orderDoc.data()!;
+      print("✅ โหลด Order สำเร็จ: $order");
+
+      final parcelSnap = await FirebaseFirestore.instance
+          .collection("Parcel")
+          .where("orderId", isEqualTo: widget.orderId)
+          .limit(1)
+          .get();
+
+      setState(() {
+        orderData = order;
+        parcelData = parcelSnap.docs.isNotEmpty
+            ? parcelSnap.docs.first.data()
+            : null;
+        isLoading = false;
+      });
     } catch (e) {
       print("❌ Error fetching order: $e");
       setState(() => isLoading = false);
-    }
-  }
-
-  /// รับงาน → อัปเดต Order + Rider + บันทึกพิกัด
-  Future<void> acceptOrder() async {
-    if (orderAccepted) return; // ป้องกันเรียกซ้ำ
-    orderAccepted = true;
-
-    try {
-      // 1️⃣ ขอสิทธิ์ตำแหน่ง
-      final permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("กรุณาอนุญาตการเข้าถึงตำแหน่งก่อน")),
-        );
-        return;
-      }
-
-      // 2️⃣ ดึงตำแหน่งปัจจุบัน
-      final position = await Geolocator.getCurrentPosition();
-      print("📍 Position: ${position.latitude}, ${position.longitude}");
-      print("🆔 Order ID: ${widget.orderId}");
-      print("🛵 Rider ID: ${widget.riderId}");
-
-      // 3️⃣ ตรวจสอบว่ามี document จริงไหม
-      final docSnap = await FirebaseFirestore.instance
-          .collection("Order")
-          .doc(widget.orderId)
-          .get();
-      print("📌 Document exists? ${docSnap.exists}");
-
-      if (!docSnap.exists) {
-        print("❌ ไม่พบ Order ใน Firestore");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("ไม่พบข้อมูลออเดอร์ในระบบ")),
-        );
-        return;
-      }
-
-      // 4️⃣ อัปเดต Order
-      try {
-        await FirebaseFirestore.instance
-            .collection("Order")
-            .doc(widget.orderId)
-            .set({
-              "status": "กำลังจัดส่งงาน",
-              "riderId": widget.riderId,
-              "riderLat": position.latitude,
-              "riderLng": position.longitude,
-            }, SetOptions(merge: true));
-        print("✅ Order อัปเดตเรียบร้อย");
-        setState(() {
-          orderData?['status'] = "กำลังจัดส่งงาน";
-        });
-      } catch (e) {
-        print("❌ Error อัปเดต Order: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("เกิดข้อผิดพลาดในการอัปเดต Order")),
-        );
-        return;
-      }
-
-      // 5️⃣ อัปเดต Rider
-      try {
-        await FirebaseFirestore.instance
-            .collection("Rider")
-            .doc(widget.riderId)
-            .update({
-              "status": "กำลังจัดส่งงาน",
-              "currentLat": position.latitude,
-              "currentLng": position.longitude,
-            });
-        print("✅ Rider อัปเดตเรียบร้อย");
-      } catch (e) {
-        print("❌ Error อัปเดต Rider: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("เกิดข้อผิดพลาดในการอัปเดต Rider")),
-        );
-        return;
-      }
-
-      // 6️⃣ แจ้งผู้ใช้
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("รับงานเรียบร้อยแล้ว ✅")));
-    } catch (e) {
-      print("❌ Error ใน acceptOrder: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("เกิดข้อผิดพลาด")));
     }
   }
 
@@ -195,7 +241,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 🔹 กล่องข้อมูลออเดอร์
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -205,7 +250,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // หัวข้อ + ปุ่มรับแล้ว
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -238,7 +282,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
@@ -297,10 +340,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // 🔹 กล่องแผนที่
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -330,8 +370,15 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                       borderRadius: BorderRadius.circular(15),
                       child: FlutterMap(
                         options: MapOptions(
-                          initialCenter: LatLng(16.246373, 103.251827),
-                          initialZoom: 15.2,
+                          initialCenter:
+                              orderData != null &&
+                                  orderData!['pickupLat'] != null
+                              ? LatLng(
+                                  double.parse(orderData!['pickupLat']),
+                                  double.parse(orderData!['pickupLng']),
+                                )
+                              : LatLng(16.246373, 103.251827),
+                          initialZoom: 15.0,
                         ),
                         children: [
                           TileLayer(
@@ -339,20 +386,76 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                 'https://tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey=f40b14c2ac6146e39fb5c55a0fbf124b',
                             userAgentPackageName: 'com.example.delivery',
                           ),
+
                           MarkerLayer(
                             markers: [
-                              Marker(
-                                point: LatLng(16.246373, 103.251827),
-                                width: 50,
-                                height: 50,
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.red,
-                                  size: 40,
+                              // Rider
+                              if (orderData?['riderLat'] != null &&
+                                  orderData?['riderLng'] != null)
+                                Marker(
+                                  point: LatLng(
+                                    orderData!['riderLat'],
+                                    orderData!['riderLng'],
+                                  ),
+                                  width: 50,
+                                  height: 50,
+                                  child: const Icon(
+                                    Icons.directions_bike,
+                                    color: Colors.blue,
+                                    size: 40,
+                                  ),
                                 ),
-                              ),
+
+                              // Pickup
+                              if (orderData?['pickupLat'] != null &&
+                                  orderData?['pickupLng'] != null)
+                                Marker(
+                                  point: LatLng(
+                                    double.parse(orderData!['pickupLat']),
+                                    double.parse(orderData!['pickupLng']),
+                                  ),
+                                  width: 50,
+                                  height: 50,
+                                  child: const Icon(
+                                    Icons.store,
+                                    color: Colors.orange,
+                                    size: 40,
+                                  ),
+                                ),
+
+                              // Receiver
+                              if (orderData?['receiverLat'] != null &&
+                                  orderData?['receiverLng'] != null)
+                                Marker(
+                                  point: LatLng(
+                                    double.parse(orderData!['receiverLat']),
+                                    double.parse(orderData!['receiverLng']),
+                                  ),
+                                  width: 50,
+                                  height: 50,
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                                ),
                             ],
                           ),
+
+                          // เส้นทางจาก Rider → Pickup → Receiver
+                          if (orderData?['riderLat'] != null &&
+                              orderData?['pickupLat'] != null &&
+                              orderData?['receiverLat'] != null)
+                            PolylineLayer(
+                              polylines: [
+                                for (var line in routeLines)
+                                  Polyline(
+                                    points: line,
+                                    color: Colors.green,
+                                    strokeWidth: 4,
+                                  ),
+                              ],
+                            ),
                         ],
                       ),
                     ),

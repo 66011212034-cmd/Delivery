@@ -148,7 +148,9 @@ class _SelectAddressPageState extends State<SelectAddressPage> {
               onPressed: selectedAddress != null
                   ? () {
                       Navigator.pop(context, {
-                        'address': selectedAddress!['name'], // ส่งเฉพาะที่อยู่
+                        'address': selectedAddress!['name'], // ส่งชื่อที่อยู่
+                        'lat': selectedAddress!['lat'], // ส่ง latitude
+                        'lng': selectedAddress!['lng'], // ส่ง longitude
                       });
                     }
                   : null,
@@ -164,4 +166,5 @@ class _SelectAddressPageState extends State<SelectAddressPage> {
     );
   }
 }
+
 ///

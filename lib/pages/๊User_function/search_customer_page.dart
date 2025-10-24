@@ -12,6 +12,40 @@ class SearchCustomerPage extends StatefulWidget {
 class _SearchCustomerPageState extends State<SearchCustomerPage> {
   final TextEditingController phoneController = TextEditingController();
   List<Map<String, dynamic>> searchResults = [];
+  List<Map<String, dynamic>> allUsers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllUsers();
+  }
+
+  Future<void> _loadAllUsers() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('User')
+          .get();
+      final users = snapshot.docs.map((doc) {
+        final data = doc.data();
+        List<Map<String, dynamic>> addresses = [];
+        if (data['addresses'] != null) {
+          addresses = List<Map<String, dynamic>>.from(data['addresses']);
+        }
+        return {
+          'userId': doc.id,
+          'name': '${data['firstName']} ${data['lastName']}',
+          'phone': data['phone'],
+          'addresses': addresses,
+        };
+      }).toList();
+
+      setState(() {
+        allUsers = users;
+      });
+    } catch (e) {
+      print("Error loading users: $e");
+    }
+  }
 
   Future<void> _search() async {
     final input = phoneController.text.trim();
@@ -23,12 +57,58 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
     }
 
     try {
-      final snapshot = await FirebaseFirestore.instance
+      // 1) พยายามทำ prefix search บนเซิร์ฟเวอร์ (เร็วกว่า) - จะหาเบอร์ที่เริ่มต้นด้วย input
+      final prefixSnapshot = await FirebaseFirestore.instance
           .collection('User')
-          .where('phone', isEqualTo: input)
+          .where('phone', isGreaterThanOrEqualTo: input)
+          .where('phone', isLessThanOrEqualTo: input + '\uf8ff')
           .get();
 
-      if (snapshot.docs.isEmpty) {
+      List<Map<String, dynamic>> results = prefixSnapshot.docs.map((doc) {
+        final data = doc.data();
+        List<Map<String, dynamic>> addresses = [];
+        if (data['addresses'] != null) {
+          addresses = List<Map<String, dynamic>>.from(data['addresses']);
+        }
+        return {
+          'userId': doc.id,
+          'name': '${data['firstName']} ${data['lastName']}',
+          'phone': data['phone'],
+          'addresses': addresses,
+        };
+      }).toList();
+
+      // 2) ถ้าต้องการ behaviour แบบ %input% (contains) และ prefix ไม่พอ
+      //    ให้กรองฝั่งไคลเอนต์ (Firestore ไม่มี substring contains query)
+      //    -- ถ้าฐานข้อมูลใหญ่ อาจช้าหรือเปลือง อ่านข้อควรระวังด้านล่าง
+      if (results.isEmpty) {
+        final allSnap = await FirebaseFirestore.instance
+            .collection('User')
+            .get();
+        final filtered = allSnap.docs
+            .where((doc) {
+              final phone = (doc.data()['phone'] ?? '').toString();
+              return phone.contains(input);
+            })
+            .map((doc) {
+              final data = doc.data();
+              List<Map<String, dynamic>> addresses = [];
+              if (data['addresses'] != null) {
+                addresses = List<Map<String, dynamic>>.from(data['addresses']);
+              }
+              return {
+                'userId': doc.id,
+                'name': '${data['firstName']} ${data['lastName']}',
+                'phone': data['phone'],
+                'addresses': addresses,
+              };
+            })
+            .toList();
+
+        results = filtered;
+      }
+
+      if (results.isEmpty) {
         setState(() {
           searchResults = [];
         });
@@ -37,21 +117,6 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
         ).showSnackBar(const SnackBar(content: Text('ไม่พบผู้ใช้เบอร์นี้')));
         return;
       }
-
-      // แปลงข้อมูลเอกสารให้เป็น Map
-      final results = snapshot.docs.map((doc) {
-        final data = doc.data();
-        List<Map<String, dynamic>> addresses = [];
-        if (data['addresses'] != null) {
-          addresses = List<Map<String, dynamic>>.from(data['addresses']);
-        }
-        return {
-          'userId': doc.id, // เพิ่ม userId ของ document
-          'name': '${data['firstName']} ${data['lastName']}',
-          'phone': data['phone'],
-          'addresses': addresses,
-        };
-      }).toList();
 
       setState(() {
         searchResults = results;
@@ -62,6 +127,66 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
         context,
       ).showSnackBar(const SnackBar(content: Text('เกิดข้อผิดพลาดในการค้นหา')));
     }
+  }
+
+  Widget _buildUserCard(Map<String, dynamic> receiver) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4E7CBF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            receiver['name'] ?? '',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            receiver['phone'] ?? '',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed: () async {
+                final selectedAddress = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        SelectAddressPage(userId: receiver['userId']),
+                  ),
+                );
+
+                if (selectedAddress != null) {
+                  Navigator.pop(context, {
+                    'name': receiver['name'],
+                    'phone': receiver['phone'],
+                    'address': selectedAddress['address'],
+                    'lat': selectedAddress['lat'],
+                    'lng': selectedAddress['lng'],
+                    'userId': receiver['userId'],
+                  });
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow),
+              child: const Text(
+                'เลือกที่อยู่ผู้รับ',
+                style: TextStyle(color: Colors.black),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -122,74 +247,23 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
               ),
             ),
             const SizedBox(height: 24),
-            if (searchResults.isNotEmpty)
-              Expanded(
-                child: ListView.builder(
-                  itemCount: searchResults.length,
-                  itemBuilder: (context, index) {
-                    final receiver = searchResults[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4E7CBF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            receiver['name'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            receiver['phone'] ?? '',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                final selectedAddress = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => SelectAddressPage(
-                                      userId: receiver['userId'],
-                                    ),
-                                  ),
-                                );
-
-                                if (selectedAddress != null) {
-                                  // ส่งข้อมูลกลับ CreateParcelScreen
-                                  Navigator.pop(context, {
-                                    'name': receiver['name'],
-                                    'phone': receiver['phone'],
-                                    'address': selectedAddress['address'],
-                                    'userId': receiver['userId'],
-                                  });
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.yellow,
-                              ),
-                              child: const Text(
-                                'เลือกที่อยู่ผู้รับ',
-                                style: TextStyle(color: Colors.black),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
+            Expanded(
+              child: (searchResults.isNotEmpty)
+                  ? ListView.builder(
+                      itemCount: searchResults.length,
+                      itemBuilder: (context, index) =>
+                          _buildUserCard(searchResults[index]),
+                    )
+                  : (allUsers.isNotEmpty)
+                  ? ListView.builder(
+                      itemCount: allUsers.length,
+                      itemBuilder: (context, index) =>
+                          _buildUserCard(allUsers[index]),
+                    )
+                  : const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+            ),
           ],
         ),
       ),

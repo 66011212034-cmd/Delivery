@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:delivery/pages/%E0%B9%8AUser_function/search_customer_page.dart';
+import 'package:delivery/pages/gps.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CreateParcelScreen extends StatefulWidget {
@@ -26,6 +29,11 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
 
   File? productImage;
   final ImagePicker _picker = ImagePicker();
+
+  // เพิ่มตัวแปรสำหรับเก็บพิกัดผู้รับ
+  String? receiverLat;
+  String? receiverLng;
+  LatLng? pickupPoint;
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +159,10 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                               selectedReceiver['phone'] ?? '';
                           receiverAddressController.text =
                               selectedReceiver['address'] ?? '';
+                          receiverLat =
+                              selectedReceiver['lat']; // เก็บเป็นตัวแปร state
+                          receiverLng =
+                              selectedReceiver['lng']; // เก็บเป็นตัวแปร state
                           receiveruserIdController.text =
                               selectedReceiver['userId'] ?? '';
                         });
@@ -254,6 +266,51 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 ),
                 const SizedBox(height: 20),
 
+                // แผนที่แสดงพิกัดผู้รับ (ถ้ามีพิกัด)
+                if (receiverLat != null && receiverLng != null)
+                  Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white),
+                    ),
+                    child: FlutterMap(
+                      mapController: MapController(),
+                      options: MapOptions(
+                        initialCenter: LatLng(
+                          double.parse(receiverLat!),
+                          double.parse(receiverLng!),
+                        ),
+                        initialZoom: 15.0,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                          subdomains: ['a', 'b', 'c'],
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: LatLng(
+                                double.parse(receiverLat!),
+                                double.parse(receiverLng!),
+                              ),
+                              width: 50,
+                              height: 50,
+                              child: const Icon(
+                                Icons.location_on,
+                                color: Colors.red,
+                                size: 40,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 20),
+
                 const Text(
                   "รูปภาพสินค้า",
                   style: TextStyle(
@@ -288,6 +345,40 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final selected = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const GPSandMapPage(), // ใช้หน้าเลือกตำแหน่ง
+                        ),
+                      );
+
+                      if (selected != null && selected is LatLng) {
+                        setState(() {
+                          pickupPoint = selected;
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.map, color: Colors.white),
+                    label: Text(
+                      pickupPoint != null
+                          ? "ตำแหน่งรับ: (${pickupPoint!.latitude.toStringAsFixed(6)}, ${pickupPoint!.longitude.toStringAsFixed(6)})"
+                          : "เลือกตำแหน่งรับสินค้า",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0C3B66),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
                     onPressed: _confirmOrder,
@@ -297,6 +388,7 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
                         borderRadius: BorderRadius.circular(5),
                       ),
                     ),
+
                     child: const Text(
                       "ยืนยันการจัดส่งสินค้า",
                       style: TextStyle(
@@ -395,40 +487,38 @@ class _CreateParcelScreenState extends State<CreateParcelScreen> {
       print("✅ File saved locally: ${localFile.path}");
 
       // 2️⃣ สร้าง Order ก่อน เพื่อให้ได้ orderId
-      final orderRef = await FirebaseFirestore.instance.collection("Order").add(
-        {
-          "userId": receiveruserIdController.text.trim(), // ผู้รับ
-          "senderId": widget.senderId, // ผู้ส่ง
-          "receiverName": receiverNameController.text.trim(),
-          "receiverAddress": receiverAddressController.text.trim(),
-          "total_cost": double.tryParse(priceController.text.trim()) ?? 0,
-          "status": "รอไรเดอร์รับออเดอร์",
-          "imagePath": localFile.path, // path local
-          "createdAt": Timestamp.now(),
-        },
-      );
+      final orderRef = await FirebaseFirestore.instance
+          .collection("Order")
+          .add({
+            "userId": receiveruserIdController.text.trim(),
+            "senderId": widget.senderId,
+            "receiverName": receiverNameController.text.trim(),
+            "receiverAddress": receiverAddressController.text.trim(),
+            "receiverLat": receiverLat,
+            "receiverLng": receiverLng,
+            "pickupLat": pickupPoint?.latitude.toString(),
+            "pickupLng": pickupPoint?.longitude.toString(),
+            "total_cost": double.tryParse(priceController.text.trim()) ?? 0,
+            "status": "รอไรเดอร์รับออเดอร์",
+            "imagePath": localFile.path,
+            "createdAt": Timestamp.now(),
+          });
 
       // 3️⃣ สร้าง Parcel โดยใส่ orderId ไปด้วย
       await FirebaseFirestore.instance.collection("Parcel").add({
         "name": productNameController.text.trim(),
         "price": double.tryParse(priceController.text.trim()) ?? 0,
         "createdAt": Timestamp.now(),
-        "orderId": orderRef.id, // ใส่ ID ของออเดอร์ที่สร้างไว้
+        "orderId": orderRef.id,
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("ดำเนินการจัดส่งสินค้าเรียบร้อย!")),
-      );
-
-      // 4️⃣ เคลียร์ฟอร์ม
-      setState(() {
-        productImage = null;
-        productNameController.clear();
-        priceController.clear();
-        receiverNameController.clear();
-        receiverPhoneController.clear();
-        receiverAddressController.clear();
-      });
+      // ✅ แจ้งเตือนแล้วกลับหน้าก่อนหน้า
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("ดำเนินการจัดส่งสินค้าเรียบร้อย!")),
+        );
+        Navigator.pop(context, true); // ส่ง true กลับไปถ้าหน้าก่อนต้อง refresh
+      }
     } catch (e) {
       print("❌ ERROR: $e");
       ScaffoldMessenger.of(
