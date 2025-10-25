@@ -137,51 +137,74 @@ class _SearchCustomerPageState extends State<SearchCustomerPage> {
         color: const Color(0xFF4E7CBF),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            receiver['name'] ?? '',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          // 🔹 รูปโปรไฟล์
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            backgroundImage:
+                (receiver['profileUrl'] != null &&
+                    receiver['profileUrl'].toString().isNotEmpty)
+                ? NetworkImage(receiver['profileUrl'])
+                : const AssetImage('assets/images/default_profile.png')
+                      as ImageProvider,
           ),
-          const SizedBox(height: 4),
-          Text(
-            receiver['phone'] ?? '',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: () async {
-                final selectedAddress = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        SelectAddressPage(userId: receiver['userId']),
-                  ),
-                );
+          const SizedBox(width: 16),
 
-                if (selectedAddress != null) {
-                  Navigator.pop(context, {
-                    'name': receiver['name'],
-                    'phone': receiver['phone'],
-                    'address': selectedAddress['address'],
-                    'lat': selectedAddress['lat'],
-                    'lng': selectedAddress['lng'],
-                    'userId': receiver['userId'],
-                  });
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow),
-              child: const Text(
-                'เลือกที่อยู่ผู้รับ',
-                style: TextStyle(color: Colors.black),
-              ),
+          // 🔹 ข้อมูลผู้ใช้
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${receiver['name'] ?? ''}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'โทร: ${receiver['phone'] ?? ''}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final selectedAddress = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              SelectAddressPage(userId: receiver['userId']),
+                        ),
+                      );
+
+                      if (selectedAddress != null) {
+                        Navigator.pop(context, {
+                          'name': receiver['name'],
+                          'phone': receiver['phone'],
+                          'address': selectedAddress['address'],
+                          'lat': selectedAddress['lat'],
+                          'lng': selectedAddress['lng'],
+                          'userId': receiver['userId'],
+                        });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.yellow,
+                    ),
+                    child: const Text(
+                      'เลือกที่อยู่ผู้รับ',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
