@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:delivery/pages/Rider_function/order_detail_page.dart';
 import 'package:delivery/pages/page_login.dart';
 import 'package:flutter/material.dart';
+import 'dart:io'; // เพิ่ม import นี้สำหรับ File
 
 class RiderProfile extends StatefulWidget {
   final String userId;
@@ -37,6 +38,35 @@ class _RiderProfileState extends State<RiderProfile> {
     }
   }
 
+  /// ✅ ฟังก์ชันดึงรูปภาพที่รองรับทั้ง Firebase Storage และ Local Path
+  ImageProvider getProfileImage() {
+    if (riderData == null) {
+      return const AssetImage("assets/images/rider.png");
+    }
+
+    // ตรวจสอบถ้ามี profileUrl และไม่ว่างเปล่า
+    final profileUrl = riderData?['profileUrl'] as String?;
+    if (profileUrl != null && profileUrl.isNotEmpty) {
+      return NetworkImage(profileUrl);
+    }
+
+    // ตรวจสอบถ้ามี profilePath และไม่ว่างเปล่า
+    final profilePath = riderData?['profilePath'] as String?;
+    if (profilePath != null && profilePath.isNotEmpty) {
+      try {
+        final file = File(profilePath);
+        if (file.existsSync()) {
+          return FileImage(file);
+        }
+      } catch (e) {
+        print("Error loading local image: $e");
+      }
+    }
+
+    // ถ้าไม่มีทั้งคู่ ใช้รูป default
+    return const AssetImage("assets/images/rider.png");
+  }
+
   /// ✅ ดึงข้อมูลออเดอร์ที่รอไรเดอร์รับเท่านั้น
   Stream<QuerySnapshot> getAvailableOrders() {
     return FirebaseFirestore.instance
@@ -48,7 +78,7 @@ class _RiderProfileState extends State<RiderProfile> {
   /// ✅ ฟังก์ชันรีเฟรชหน้า
   Future<void> _refreshOrders() async {
     setState(() {});
-    await Future.delayed(const Duration(seconds: 1)); // โหลดใหม่เล็กน้อย
+    await Future.delayed(const Duration(seconds: 1));
   }
 
   @override
@@ -56,8 +86,6 @@ class _RiderProfileState extends State<RiderProfile> {
     if (riderData == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
-    final profileUrl = riderData?['profileUrl'] as String?;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0C3B66),
@@ -73,13 +101,7 @@ class _RiderProfileState extends State<RiderProfile> {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundImage: riderData!['profileUrl'] != ""
-                        ? NetworkImage(riderData!['profileUrl'])
-                        : const AssetImage("assets/images/rider.png")
-                              as ImageProvider,
-                  ),
+                  CircleAvatar(radius: 35, backgroundImage: getProfileImage()),
                   const SizedBox(width: 15),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,14 +115,24 @@ class _RiderProfileState extends State<RiderProfile> {
                         ),
                       ),
                       Text(
-                        riderData!['phone'],
+                        riderData!['phone'] ?? '-',
                         style: const TextStyle(color: Colors.white70),
+                      ),
+                      Text(
+                        "สถานะ: ${riderData!['status'] ?? 'ว่าง'}",
+                        style: TextStyle(
+                          color: (riderData!['status'] == 'กำลังจัดส่งงาน')
+                              ? Colors.orange
+                              : Colors.green,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 20),
+
               // ✅ ปุ่มดูงานที่กำลังรับ
               SizedBox(
                 width: double.infinity,
@@ -121,7 +153,14 @@ class _RiderProfileState extends State<RiderProfile> {
                     final querySnapshot = await FirebaseFirestore.instance
                         .collection("Order")
                         .where("riderId", isEqualTo: widget.userId)
-                        .where("status", isEqualTo: "กำลังจัดส่งงาน")
+                        .where(
+                          "status",
+                          whereIn: [
+                            "ไรเดอร์รับงาน",
+                            "รับสินค้าแล้ว",
+                            "กำลังเดินทางไปส่ง",
+                          ],
+                        )
                         .get();
 
                     if (querySnapshot.docs.isEmpty) {
@@ -150,7 +189,7 @@ class _RiderProfileState extends State<RiderProfile> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => OrderDetailPage(
-                          orderId: orderDoc.id, // ✅ ถูกต้อง
+                          orderId: orderDoc.id,
                           riderId: widget.userId,
                         ),
                       ),
@@ -312,7 +351,7 @@ class _RiderProfileState extends State<RiderProfile> {
                                               ],
                                             ),
                                           );
-                                          return; // ออกจากฟังก์ชัน ไม่ไปหน้า OrderDetailPage
+                                          return;
                                         }
 
                                         // ✅ ถ้าว่าง ให้ไปหน้า OrderDetailPage
@@ -327,11 +366,11 @@ class _RiderProfileState extends State<RiderProfile> {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => OrderDetailPage(
-                                              orderId: orders[index].id,
-                                              riderId: widget
-                                                  .userId, // ✅ ส่ง userId เป็น riderId
-                                            ),
+                                            builder: (context) =>
+                                                OrderDetailPage(
+                                                  orderId: orders[index].id,
+                                                  riderId: widget.userId,
+                                                ),
                                           ),
                                         );
                                       },

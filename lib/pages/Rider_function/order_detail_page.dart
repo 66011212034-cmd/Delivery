@@ -57,11 +57,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   Map<String, dynamic>? parcelData;
   List<LatLng> riderPath = [];
 
-  List<List<LatLng>> routeLines = []; // เก็บเส้นทางตามถนนจริง
-  List<LatLng> currentRoute = []; // สำหรับอัปเดต Polyline แบบเรียลไทม์
+  List<List<LatLng>> routeLines = [];
+  List<LatLng> currentRoute = [];
   StreamSubscription<Position>? _positionStream;
 
-  // ตัวแปรสำหรับสถานะ
   String currentStatus = "กำลังจัดส่งงาน";
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -69,13 +68,33 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initPage(); // โหลดข้อมูลและเส้นทาง
+      _initPage();
     });
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
   }
 
   Future<void> _initPage() async {
     await fetchOrderDetails();
 
+    // ตรวจสอบว่าออเดอร์นี้ถูกรับแล้วหรือยัง
+    if (orderData?['riderId'] == null ||
+        orderData?['riderId'] != widget.riderId) {
+      // ถ้ายังไม่ถูกรับ ให้เรียก acceptOrder
+      await acceptOrder();
+    } else {
+      // ถ้าถูกรับแล้ว ให้ตั้งค่า _hasAccepted เป็น true
+      setState(() {
+        _hasAccepted = true;
+        currentStatus = orderData?['status'] ?? "ไรเดอร์รับงาน";
+      });
+    }
+
+    // สร้างเส้นทาง
     if (orderData?['riderLat'] != null &&
         orderData?['riderLng'] != null &&
         orderData?['pickupLat'] != null &&
@@ -85,23 +104,22 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       final routeFromRider = await getRoutePoints(
         LatLng(orderData!['riderLat'], orderData!['riderLng']),
         LatLng(
-          double.parse(orderData!['pickupLat']),
-          double.parse(orderData!['pickupLng']),
+          double.parse(orderData!['pickupLat'].toString()),
+          double.parse(orderData!['pickupLng'].toString()),
         ),
       );
 
       final routeToReceiver = await getRoutePoints(
         LatLng(
-          double.parse(orderData!['pickupLat']),
-          double.parse(orderData!['pickupLng']),
+          double.parse(orderData!['pickupLat'].toString()),
+          double.parse(orderData!['pickupLng'].toString()),
         ),
         LatLng(
-          double.parse(orderData!['receiverLat']),
-          double.parse(orderData!['receiverLng']),
+          double.parse(orderData!['receiverLat'].toString()),
+          double.parse(orderData!['receiverLng'].toString()),
         ),
       );
 
-      // ตรวจสอบว่าเส้นทางไม่ว่างก่อนเพิ่ม
       if (routeFromRider.isNotEmpty && routeToReceiver.isNotEmpty) {
         setState(() {
           routeLines = [routeFromRider, routeToReceiver];
@@ -109,16 +127,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       }
     }
 
-    if (!_hasAccepted) {
-      await acceptOrder();
-      _hasAccepted = true;
-    }
-
     startRiderLocationTracking();
   }
 
   Future<void> startRiderLocationTracking() async {
-    // ตรวจสอบ permission
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -141,7 +153,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       return;
     }
 
-    // เริ่มติดตามตำแหน่ง
     _positionStream =
         Geolocator.getPositionStream(
           locationSettings: const LocationSettings(
@@ -150,7 +161,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ),
         ).listen(
           (Position position) async {
-            // อัปเดตตำแหน่งใน Firestore
             try {
               await FirebaseFirestore.instance
                   .collection("Order")
@@ -175,20 +185,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         );
   }
 
-  @override
-  void dispose() {
-    _positionStream?.cancel(); // ❌ หยุดติดตาม GPS
-    super.dispose();
-  }
-
-  // ฟังก์ชันถ่ายภาพและอัปเดตสถานะ
-  // ฟังก์ชันถ่ายภาพและอัปเดตสถานะ
   Future<void> _takePhotoAndUpdateStatus(
     String status,
     String description,
   ) async {
     try {
-      // ถ่ายภาพ
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
         maxWidth: 800,
@@ -197,17 +198,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       );
 
       if (image != null) {
-        // สร้างชื่อไฟล์ใหม่เพื่อไม่ให้ซ้ำ
         final String newFileName =
             '${widget.orderId}_${status}_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final String newPath =
             '${image.path.split('/').sublist(0, image.path.split('/').length - 1).join('/')}/$newFileName';
 
-        // เปลี่ยนชื่อไฟล์
         final File originalFile = File(image.path);
         final File newFile = await originalFile.copy(newPath);
-
-        // ลบไฟล์เดิม
         await originalFile.delete();
 
         // อัปเดตสถานะและ path ภาพใน Firestore
@@ -216,13 +213,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             .doc(widget.orderId)
             .update({
               "status": status,
-              "${status.toLowerCase()}_image": newPath, // บันทึก path ท้องถิ่น
+              "${status.toLowerCase()}_image": newPath,
               "${status.toLowerCase()}_timestamp": FieldValue.serverTimestamp(),
             });
 
-        // ถ้าเป็นสถานะส่งสำเร็จ ให้อัพเดตสถานะไรเดอร์และตีกลับ
+        // ถ้าเป็นสถานะส่งสำเร็จ
         if (status == "นำส่งสินค้าแล้ว") {
-          // อัพเดตสถานะไรเดอร์เป็น "ว่าง"
           await FirebaseFirestore.instance
               .collection("Rider")
               .doc(widget.riderId)
@@ -231,7 +227,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 "updated_at": FieldValue.serverTimestamp(),
               });
 
-          // แสดง SnackBar แจ้งเตือน
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("✅ จัดส่งสำเร็จ! กลับสู่หน้าหลัก"),
@@ -239,17 +234,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             ),
           );
 
-          // รอ 2 วินาทีแล้วตีกลับ
           await Future.delayed(const Duration(seconds: 2));
 
-          // ตีกลับไปหน้าก่อนหน้า
           if (mounted) {
             Navigator.of(context).pop();
           }
           return;
         }
 
-        // อัปเดตสถานะ locally
         setState(() {
           currentStatus = status;
         });
@@ -258,7 +250,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           context,
         ).showSnackBar(SnackBar(content: Text("$description สำเร็จ ✅")));
 
-        // โหลดข้อมูลใหม่
         await fetchOrderDetails();
       }
     } catch (e) {
@@ -276,18 +267,19 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       final position = await _getCurrentPosition();
       print("📍 พิกัดปัจจุบัน: ${position.latitude}, ${position.longitude}");
 
+      // อัปเดต Order ด้วยข้อมูลไรเดอร์
       await FirebaseFirestore.instance
           .collection("Order")
           .doc(widget.orderId)
-          .set({
+          .update({
             "status": "ไรเดอร์รับงาน",
             "riderId": widget.riderId,
             "riderLat": position.latitude,
             "riderLng": position.longitude,
             "accepted_timestamp": FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          });
 
-      // อัพเดตสถานะไรเดอร์เป็น "กำลังจัดส่งงาน"
+      // อัพเดตสถานะไรเดอร์
       await FirebaseFirestore.instance
           .collection("Rider")
           .doc(widget.riderId)
@@ -296,20 +288,19 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             "updated_at": FieldValue.serverTimestamp(),
           });
 
-      print("✅ อัปเดต Order สำเร็จ");
+      print("✅ อัปเดต Order และ Rider สำเร็จ");
 
-      // อัปเดตสถานะ locally
       setState(() {
+        _hasAccepted = true;
         currentStatus = "ไรเดอร์รับงาน";
       });
 
-      // โหลดข้อมูลใหม่มาแสดง
       await fetchOrderDetails();
     } catch (e) {
       print("❌ เกิดข้อผิดพลาดใน acceptOrder(): $e");
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("อัปเดตออเดอร์ล้มเหลว: $e")));
+      ).showSnackBar(SnackBar(content: Text("รับออเดอร์ล้มเหลว: $e")));
     }
   }
 
@@ -335,7 +326,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       }
 
       final order = orderDoc.data()!;
-      print("✅ โหลด Order สำเร็จ: $order");
+      print("✅ โหลด Order สำเร็จ: ${order['status']}");
 
       final parcelSnap = await FirebaseFirestore.instance
           .collection("Parcel")
@@ -348,7 +339,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         parcelData = parcelSnap.docs.isNotEmpty
             ? parcelSnap.docs.first.data()
             : null;
-        currentStatus = orderData?['status'] ?? "กำลังจัดส่งงาน";
+        currentStatus = orderData?['status'] ?? "ไรเดอร์รับงาน";
         isLoading = false;
       });
     } catch (e) {
@@ -357,7 +348,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     }
   }
 
-  // Widget แสดงปุ่มถ่ายภาพตามสถานะ
   Widget _buildPhotoButton(
     String status,
     String buttonText,
@@ -382,14 +372,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  // Widget แสดงสถานะการถ่ายภาพ
   Widget _buildStatusWithImage(
     String status,
     String imageField, {
     String? localImagePath,
   }) {
-    // ตรวจสอบว่ามีภาพจาก Firestore หรือมีภาพท้องถิ่นจาก orderData
-    bool hasImage = orderData?[imageField] != null || localImagePath != null;
+    // ตรวจสอบว่ามีภาพจาก field ที่ระบุหรือไม่
+    bool hasImage = orderData?[imageField] != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,46 +411,22 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: _buildImageWidget(status, imageField, localImagePath),
+              child: Image.file(
+                File(orderData![imageField]),
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Icon(Icons.error, color: Colors.red),
+                  );
+                },
+              ),
             ),
           ),
         ],
         const SizedBox(height: 12),
       ],
     );
-  }
-
-  // Widget สร้างภาพตามแหล่งที่มา
-  Widget _buildImageWidget(
-    String status,
-    String imageField,
-    String? localImagePath,
-  ) {
-    // ถ้ามีภาพท้องถิ่น (สถานะแรก) ให้ใช้ localImagePath จาก orderData
-    if (localImagePath != null && status == "ไรเดอร์รับงาน") {
-      return Image.file(
-        File(localImagePath),
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return const Center(child: Icon(Icons.error, color: Colors.red));
-        },
-      );
-    }
-
-    // ถ้ามีภาพจาก path ท้องถิ่น (สถานะอื่นๆ)
-    if (orderData?[imageField] != null) {
-      return Image.file(
-        File(orderData![imageField]),
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return const Center(child: Icon(Icons.error, color: Colors.red));
-        },
-      );
-    }
-
-    return const Center(child: Icon(Icons.photo, size: 40, color: Colors.grey));
   }
 
   @override
@@ -522,11 +487,22 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                           fontSize: 16,
                         ),
                       ),
-                      Text(
-                        "สถานะ: $currentStatus",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          currentStatus,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -559,14 +535,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                           style: const TextStyle(color: Colors.black),
                         ),
                         Text(
-                          "ค่าจัดส่ง: ${orderData!['total_cost'] ?? 0} ฿",
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          "เบอร์โทร: ${orderData!['receiverPhone'] ?? '-'}",
+                          style: const TextStyle(color: Colors.black),
                         ),
                         Text(
-                          "สถานะ: ${orderData!['status'] ?? '-'}",
+                          "ค่าจัดส่ง: ${orderData!['total_cost'] ?? 0} ฿",
                           style: const TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -576,6 +549,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                           const Divider(),
                           Text(
                             "ชื่อพัสดุ: ${parcelData!['name'] ?? '-'}",
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                          Text(
+                            "รายละเอียด: ${parcelData!['description'] ?? '-'}",
                             style: const TextStyle(color: Colors.black),
                           ),
                           Text(
@@ -614,21 +591,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      // สถานะที่ 2: ไรเดอร์รับสินค้าแล้ว
                       _buildPhotoButton(
                         "รับสินค้าแล้ว",
                         "รับสินค้า",
                         "อัปเดตสถานะรับสินค้า",
                       ),
-
-                      // สถานะที่ 3: กำลังเดินทางไปส่ง
                       _buildPhotoButton(
                         "กำลังเดินทางไปส่ง",
                         "กำลังส่ง",
                         "อัปเดตสถานะกำลังส่ง",
                       ),
-
-                      // สถานะที่ 4: นำส่งสินค้าแล้ว
                       _buildPhotoButton(
                         "นำส่งสินค้าแล้ว",
                         "ส่งสำเร็จ",
@@ -637,16 +609,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     ],
                   ),
 
-                  // ส่วนแสดงสถานะภาพ
                   const SizedBox(height: 16),
-                  // สถานะแรก: ไรเดอร์รับงาน (ใช้ imagePath จาก orderData)
-                  _buildStatusWithImage(
-                    "ไรเดอร์รับงาน",
-                    "imagePath",
-                    localImagePath: orderData?['imagePath'],
-                  ),
-
-                  // สถานะอื่นๆ
+                  _buildStatusWithImage("ไรเดอร์รับงาน", "ไรเดอร์รับงาน_image"),
                   _buildStatusWithImage("รับสินค้าแล้ว", "รับสินค้าแล้ว_image"),
                   _buildStatusWithImage(
                     "กำลังเดินทางไปส่ง",
@@ -696,8 +660,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                               orderData != null &&
                                   orderData!['pickupLat'] != null
                               ? LatLng(
-                                  double.parse(orderData!['pickupLat']),
-                                  double.parse(orderData!['pickupLng']),
+                                  double.parse(
+                                    orderData!['pickupLat'].toString(),
+                                  ),
+                                  double.parse(
+                                    orderData!['pickupLng'].toString(),
+                                  ),
                                 )
                               : const LatLng(13.7563, 100.5018),
                           initialZoom: 15.0,
@@ -708,10 +676,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                 'https://tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey=f40b14c2ac6146e39fb5c55a0fbf124b',
                             userAgentPackageName: 'com.example.delivery',
                           ),
-
                           MarkerLayer(
                             markers: [
-                              // Rider
                               if (orderData?['riderLat'] != null &&
                                   orderData?['riderLng'] != null)
                                 Marker(
@@ -727,14 +693,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                     size: 40,
                                   ),
                                 ),
-
-                              // Pickup
                               if (orderData?['pickupLat'] != null &&
                                   orderData?['pickupLng'] != null)
                                 Marker(
                                   point: LatLng(
-                                    double.parse(orderData!['pickupLat']),
-                                    double.parse(orderData!['pickupLng']),
+                                    double.parse(
+                                      orderData!['pickupLat'].toString(),
+                                    ),
+                                    double.parse(
+                                      orderData!['pickupLng'].toString(),
+                                    ),
                                   ),
                                   width: 50,
                                   height: 50,
@@ -744,14 +712,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                     size: 40,
                                   ),
                                 ),
-
-                              // Receiver
                               if (orderData?['receiverLat'] != null &&
                                   orderData?['receiverLng'] != null)
                                 Marker(
                                   point: LatLng(
-                                    double.parse(orderData!['receiverLat']),
-                                    double.parse(orderData!['receiverLng']),
+                                    double.parse(
+                                      orderData!['receiverLat'].toString(),
+                                    ),
+                                    double.parse(
+                                      orderData!['receiverLng'].toString(),
+                                    ),
                                   ),
                                   width: 50,
                                   height: 50,
@@ -763,11 +733,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                 ),
                             ],
                           ),
-
-                          // เส้นทางจาก Rider → Pickup → Receiver
-                          if (orderData?['riderLat'] != null &&
-                              orderData?['pickupLat'] != null &&
-                              orderData?['receiverLat'] != null)
+                          if (routeLines.isNotEmpty)
                             PolylineLayer(
                               polylines: [
                                 for (var line in routeLines)
